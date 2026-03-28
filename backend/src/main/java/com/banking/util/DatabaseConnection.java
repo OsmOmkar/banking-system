@@ -6,10 +6,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-// =============================================
-// SYLLABUS: Unit V - JDBC (Java Database Connectivity)
-// Manages connection to Supabase PostgreSQL
-// =============================================
 public class DatabaseConnection {
 
     private static String DB_URL;
@@ -17,14 +13,11 @@ public class DatabaseConnection {
     private static String DB_PASSWORD;
 
     static {
-        // SYLLABUS: Unit IV - File I/O (reading config from properties file)
         try {
-            // Try environment variables first (for Railway deployment)
             DB_URL      = System.getenv("DB_URL");
             DB_USER     = System.getenv("DB_USER");
             DB_PASSWORD = System.getenv("DB_PASSWORD");
 
-            // Fallback to config.properties for local development
             if (DB_URL == null) {
                 InputStream in = DatabaseConnection.class
                         .getClassLoader().getResourceAsStream("config.properties");
@@ -37,24 +30,26 @@ public class DatabaseConnection {
                 }
             }
 
-            // Load the PostgreSQL JDBC driver
             Class.forName("org.postgresql.Driver");
             System.out.println("[DB] PostgreSQL driver loaded.");
-
         } catch (Exception e) {
             System.err.println("[DB] Initialization error: " + e.getMessage());
         }
     }
 
-    // SYLLABUS: Unit V - Connecting to a database (JDBC)
     public static Connection getConnection() throws SQLException {
         if (DB_URL == null) {
             throw new SQLException("Database URL not configured. Set DB_URL environment variable.");
         }
-        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        Properties props = new Properties();
+        props.setProperty("user", DB_USER);
+        props.setProperty("password", DB_PASSWORD);
+        props.setProperty("ssl", "true");
+        props.setProperty("sslmode", "require");
+        props.setProperty("sslfactory", "org.postgresql.ssl.NonValidatingFactory");
+        return DriverManager.getConnection(DB_URL, props);
     }
 
-    // Test the connection
     public static boolean testConnection() {
         try (Connection conn = getConnection()) {
             return conn != null && !conn.isClosed();
@@ -64,3 +59,8 @@ public class DatabaseConnection {
         }
     }
 }
+```
+
+Also revert your `DB_URL` in Railway back to the original without any extra params:
+```
+jdbc:postgresql://db.wmklacsrkgflcqmupjdt.supabase.co:5432/postgres
