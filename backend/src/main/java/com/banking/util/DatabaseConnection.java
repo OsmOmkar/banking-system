@@ -39,15 +39,9 @@ public class DatabaseConnection {
 
     public static Connection getConnection() throws SQLException {
         if (DB_URL == null) {
-            throw new SQLException("Database URL not configured. Set DB_URL environment variable.");
+            throw new SQLException("Database URL not configured.");
         }
-        Properties props = new Properties();
-        props.setProperty("user", DB_USER);
-        props.setProperty("password", DB_PASSWORD);
-        props.setProperty("ssl", "true");
-        props.setProperty("sslmode", "require");
-        props.setProperty("sslfactory", "org.postgresql.ssl.NonValidatingFactory");
-        return DriverManager.getConnection(DB_URL, props);
+        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
 
     public static boolean testConnection() {
