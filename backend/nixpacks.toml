@@ -6,3 +6,10 @@ cmds = ["bash build.sh"]
 
 [start]
 cmd = "java -cp 'out:lib/postgresql.jar' com.banking.BankingServer"
+```
+
+The key fix is the `[start]` section — it must run the `java` command directly, NOT `bash build.sh`. 
+
+Also go to Railway → Settings and make sure the **Custom Start Command** field is either **empty** (so nixpacks.toml controls it) or set to exactly:
+```
+java -cp 'out:lib/postgresql.jar' com.banking.BankingServer
