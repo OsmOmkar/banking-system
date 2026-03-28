@@ -1,14 +1,7 @@
-// ============================================================
-// CONFIGURE THIS: Replace with your Railway backend URL
-// after deploying the Java backend to Railway
-// ============================================================
 const CONFIG = {
-    API_BASE: "https://YOUR-APP.up.railway.app/api",
-    // For local testing:
-    // API_BASE: "http://localhost:8080/api"
+    API_BASE: "https://banking-system-production-7af6.up.railway.app/api",
 };
 
-// Auth helpers
 const Auth = {
     getToken: () => localStorage.getItem("token"),
     getUser:  () => JSON.parse(localStorage.getItem("user") || "{}"),
@@ -28,7 +21,6 @@ const Auth = {
     }
 };
 
-// API helper
 const API = {
     call: async (endpoint, method = "GET", body = null) => {
         const opts = {
@@ -48,6 +40,5 @@ const API = {
     }
 };
 
-// Format currency
 const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleString("en-IN") : "-";
