@@ -26,7 +26,16 @@ public class BankingServer {
 
         BankingService bankingService = new BankingService();
 
-        // Register routes
+        // Health check endpoint (required by Railway)
+        server.createContext("/", exchange -> {
+            String response = "JavaBank API is running!";
+            exchange.getResponseHeaders().add("Content-Type", "text/plain");
+            exchange.sendResponseHeaders(200, response.length());
+            exchange.getResponseBody().write(response.getBytes());
+            exchange.getResponseBody().close();
+        });
+
+        // API routes
         server.createContext("/api/auth/login",    new AuthHandler());
         server.createContext("/api/auth/register", new AuthHandler());
         server.createContext("/api/auth/logout",   new AuthHandler());
