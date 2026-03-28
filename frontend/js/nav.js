@@ -40,6 +40,6 @@ function renderSidebar(activePage) {
 async function logout() {
     try { await API.call("/auth/logout", "POST"); } catch(e) {}
     Auth.clear();
-    window.location.href = "../index.html";
+    window.location.href = "/index.html";
 }
 </script>

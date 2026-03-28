@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JavaBank — Login</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="frontend/css/style.css">
   <style>
     .tabs { justify-content: center; }
     .tab-pane { display: none; }
@@ -84,10 +84,10 @@
   </div>
 </div>
 
-<script src="js/config.js"></script>
+<script src="frontend/js/config.js"></script>
 <script>
   // Redirect if already logged in
-  if (Auth.isLoggedIn()) window.location.href = "pages/dashboard.html";
+  if (Auth.isLoggedIn()) window.location.href = "frontend/pages/dashboard.html";
 
   function switchTab(tab) {
     document.querySelectorAll(".tab").forEach((t, i) =>
@@ -113,7 +113,7 @@
     try {
       const data = await API.call("/auth/login", "POST", { username, password });
       Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
-      window.location.href = "pages/dashboard.html";
+      window.location.href = "frontend/pages/dashboard.html";
     } catch (e) {
       showAlert("loginAlert", e.message);
       btn.disabled = false;
@@ -143,7 +143,7 @@
     try {
       const data = await API.call("/auth/register", "POST", { fullName, username, email, phone, password });
       Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
-      window.location.href = "pages/dashboard.html";
+      window.location.href = "frontend/pages/dashboard.html";
     } catch (e) {
       showAlert("regAlert", e.message);
       btn.disabled = false;
