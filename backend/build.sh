@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Build & Run script for Java Banking System
+# Build script for Java Banking System
 # ============================================================
 
 echo "==> Creating output directory..."
@@ -25,5 +25,4 @@ fi
 echo "==> Copying resources..."
 cp -r src/main/resources/* out/
 
-echo "==> Build successful! Starting server..."
-java -cp "out:lib/postgresql.jar" com.banking.BankingServer
+echo "==> Build complete!"
