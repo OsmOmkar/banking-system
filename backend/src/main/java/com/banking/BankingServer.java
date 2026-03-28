@@ -18,6 +18,8 @@ public class BankingServer {
 
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        System.out.println("[BankingServer] Starting on port " + port);
 
         // Test DB connection on startup
         System.out.println("[Server] Testing database connection...");
