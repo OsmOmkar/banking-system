@@ -3,12 +3,10 @@ package com.banking;
 import com.banking.service.BankingService;
 import com.banking.servlet.*;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpExchange;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
-// =============================================
-// SYLLABUS: Unit I - Java program entry point (main method)
-// =============================================
 public class BankingServer {
 
     public static void main(String[] args) throws Exception {
@@ -16,22 +14,27 @@ public class BankingServer {
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         System.out.println("[BankingServer] Starting on port " + port);
 
-        // Test DB connection on startup
-        System.out.println("[Server] Testing database connection...");
         if (!com.banking.util.DatabaseConnection.testConnection()) {
-            System.err.println("[Server] WARNING: Database connection failed. Check DB_URL, DB_USER, DB_PASSWORD.");
+            System.err.println("[Server] WARNING: Database connection failed.");
         } else {
             System.out.println("[Server] Database connected successfully.");
         }
 
         BankingService bankingService = new BankingService();
 
-        // Health check endpoint (required by Railway)
-        server.createContext("/", exchange -> {
-            String response = "JavaBank API is running!";
-            exchange.getResponseHeaders().add("Content-Type", "text/plain");
-            exchange.sendResponseHeaders(200, response.length());
-            exchange.getResponseBody().write(response.getBytes());
+        // Health check endpoints — Railway checks /api/health
+        server.createContext("/api/health", (HttpExchange exchange) -> {
+            byte[] response = "OK".getBytes();
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.getResponseBody().close();
+        });
+
+        server.createContext("/", (HttpExchange exchange) -> {
+            byte[] response = "JavaBank API is running!".getBytes();
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
             exchange.getResponseBody().close();
         });
 
@@ -51,7 +54,6 @@ public class BankingServer {
         server.start();
         System.out.println("[BankingServer] Server running on port " + port);
 
-        // Graceful shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[BankingServer] Shutting down...");
             bankingService.shutdown();
