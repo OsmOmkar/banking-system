@@ -59,8 +59,3 @@ public class DatabaseConnection {
         }
     }
 }
-```
-
-Also revert your `DB_URL` in Railway back to the original without any extra params:
-```
-jdbc:postgresql://db.wmklacsrkgflcqmupjdt.supabase.co:5432/postgres
