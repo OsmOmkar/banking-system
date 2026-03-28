@@ -1,8 +1,9 @@
 {
-  "version": 2,
-  "routes": [
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/pages/(.*)", "dest": "/pages/$1" },
-    { "src": "/(.*)", "dest": "/$1" }
-  ]
+  "cleanUrls": true,
+  "trailingSlash": false
 }
+```
+
+And also tell me — when you visit this URL directly in your browser, what do you see?
+```
+https://banking-system-lpvktwx7y-osmomkars-projects.vercel.app/index.html
