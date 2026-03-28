@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — JavaBank</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 id="welcomeMsg">Welcome back! 👋</h1>
+      <p>Here's your financial overview</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card blue">
+        <div class="label">Total Balance</div>
+        <div class="value" id="totalBalance">Loading...</div>
+        <div class="sub">Across all accounts</div>
+      </div>
+      <div class="stat-card green">
+        <div class="label">Accounts</div>
+        <div class="value" id="accountCount">-</div>
+        <div class="sub">Active accounts</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="label">Fraud Alerts</div>
+        <div class="value" id="fraudCount">-</div>
+        <div class="sub">Unresolved alerts</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Last Activity</div>
+        <div class="value" style="font-size:1rem" id="lastActivity">-</div>
+        <div class="sub">Most recent transaction</div>
+      </div>
+    </div>
+
+    <!-- Accounts overview -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">💳 My Accounts</div>
+      <div class="accounts-grid" id="accountsGrid">
+        <div style="color:#9ca3af;padding:20px">Loading accounts...</div>
+      </div>
+    </div>
+
+    <!-- Recent transactions -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>📋 Recent Transactions</span>
+        <a href="transactions.html" class="btn btn-outline btn-sm">View All</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Type</th><th>Description</th>
+              <th>Amount</th><th>Balance</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="recentTxBody">
+            <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:24px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Auth.requireAuth();
+const user = Auth.getUser();
+renderSidebar("dashboard");
+document.getElementById("welcomeMsg").textContent = `Welcome back, ${user.fullName || user.username}! 👋`;
+
+let allAccounts = [];
+
+async function loadDashboard() {
+    try {
+        allAccounts = await API.call("/accounts");
+
+        // Stats
+        const totalBal = allAccounts.reduce((s, a) => s + a.balance, 0);
+        document.getElementById("totalBalance").textContent = fmt(totalBal);
+        document.getElementById("accountCount").textContent = allAccounts.length;
+
+        // Account cards
+        const grid = document.getElementById("accountsGrid");
+        if (allAccounts.length === 0) {
+            grid.innerHTML = `<div class="empty-state"><div class="icon">💳</div>
+                <p>No accounts yet. <a href="accounts.html">Create one</a></p></div>`;
+        } else {
+            grid.innerHTML = allAccounts.map(a => `
+              <div class="account-card ${a.accountType === 'CURRENT' ? 'current' : ''}"
+                   onclick="window.location.href='transactions.html?accountId=${a.id}'">
+                <div class="acc-type">${a.accountType} Account</div>
+                <div class="acc-bal">${fmt(a.balance)}</div>
+                <div class="acc-num">${a.accountNumber}</div>
+                <div class="acc-sub">Monthly Interest: ${fmt(a.interest)}</div>
+              </div>`).join("");
+        }
+
+        // Load recent transactions for first account
+        if (allAccounts.length > 0) {
+            await loadRecentTx(allAccounts[0].id);
+        }
+
+        // Fraud count across all accounts
+        let fraudTotal = 0;
+        for (const acc of allAccounts) {
+            try {
+                const alerts = await API.call(`/fraud/alerts?accountId=${acc.id}`);
+                fraudTotal += alerts.filter(a => !a.resolved).length;
+            } catch(e) {}
+        }
+        const fc = document.getElementById("fraudCount");
+        fc.textContent = fraudTotal;
+        fc.style.color = fraudTotal > 0 ? "var(--danger)" : "var(--success)";
+
+    } catch(e) {
+        console.error("Dashboard load error:", e);
+    }
+}
+
+async function loadRecentTx(accountId) {
+    try {
+        const txList = await API.call(`/transactions?accountId=${accountId}`);
+        const tbody = document.getElementById("recentTxBody");
+
+        if (txList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No transactions yet</td></tr>`;
+            return;
+        }
+
+        const recent = txList.slice(0, 8);
+        document.getElementById("lastActivity").textContent = fmtDate(recent[0]?.date).split(",")[0];
+
+        tbody.innerHTML = recent.map(tx => {
+            const isCredit = tx.type === "DEPOSIT" || tx.type === "INTEREST";
+            return `<tr>
+              <td>${fmtDate(tx.date)}</td>
+              <td><span class="badge ${txBadge(tx.type)}">${tx.type}</span></td>
+              <td>${tx.description || "-"}</td>
+              <td class="${isCredit ? 'amount-credit' : 'amount-debit'}">
+                ${isCredit ? "+" : "-"}${fmt(tx.amount)}
+              </td>
+              <td>${fmt(tx.balanceAfter)}</td>
+              <td>${tx.flagged
+                ? '<span class="badge badge-red">⚠️ Flagged</span>'
+                : '<span class="badge badge-green">✓ OK</span>'}</td>
+            </tr>`;
+        }).join("");
+    } catch(e) {}
+}
+
+function txBadge(type) {
+    return { DEPOSIT:"badge-green", WITHDRAWAL:"badge-red",
+             TRANSFER:"badge-blue", INTEREST:"badge-yellow" }[type] || "badge-gray";
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
