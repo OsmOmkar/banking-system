@@ -9,7 +9,6 @@
 <body>
 <div class="app-layout">
   <div id="sidebarMount"></div>
-
   <main class="main-content">
     <div class="page-header">
       <h1>🚨 Fraud Alerts</h1>
@@ -46,7 +45,7 @@
       <button class="btn btn-outline btn-sm" onclick="loadAlerts()">↻ Refresh</button>
     </div>
 
-    <div class="stats-grid" id="fraudStats" style="margin-bottom:20px">
+    <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card red"><div class="label">Total Alerts</div><div class="value" id="totalAlerts">-</div></div>
       <div class="stat-card orange"><div class="label">Unresolved</div><div class="value" id="unresolvedCount">-</div></div>
       <div class="stat-card"><div class="label">Critical</div><div class="value" id="criticalCount" style="color:#7c3aed">-</div></div>
@@ -63,6 +62,8 @@
           <thead>
             <tr>
               <th>Date & Time</th>
+              <th>Txn ID</th>
+              <th>Amount</th>
               <th>Alert Type</th>
               <th>Description</th>
               <th>Severity</th>
@@ -71,7 +72,7 @@
             </tr>
           </thead>
           <tbody id="alertsBody">
-            <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:32px">
+            <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:32px">
               Select an account to view fraud alerts
             </td></tr>
           </tbody>
@@ -85,31 +86,31 @@
         <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:1.2rem;margin-bottom:6px">💸</div>
           <div style="font-weight:600;margin-bottom:4px">Large Transaction</div>
-          <div style="font-size:.8rem;color:#6b7280">Single withdrawal/transfer &gt; ₹50,000.</div>
+          <div style="font-size:.8rem;color:#6b7280">Single withdrawal/transfer &gt; ₹50,000. Severity scales with amount.</div>
           <div style="margin-top:8px"><span class="badge badge-red">HIGH</span></div>
         </div>
         <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:1.2rem;margin-bottom:6px">⚡</div>
           <div style="font-weight:600;margin-bottom:4px">Rapid Transactions</div>
-          <div style="font-size:.8rem;color:#6b7280">5+ transactions within 10 minutes.</div>
+          <div style="font-size:.8rem;color:#6b7280">5+ transactions within 10 minutes. Uses ArrayList + time window check.</div>
           <div style="margin-top:8px"><span class="badge badge-red">HIGH</span></div>
         </div>
         <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:1.2rem;margin-bottom:6px">🌙</div>
           <div style="font-weight:600;margin-bottom:4px">Unusual Hour</div>
-          <div style="font-size:.8rem;color:#6b7280">Any transaction between 12AM–4AM.</div>
+          <div style="font-size:.8rem;color:#6b7280">Any transaction between 12AM–4AM flagged as suspicious.</div>
           <div style="margin-top:8px"><span class="badge badge-yellow">LOW</span></div>
         </div>
         <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:1.2rem;margin-bottom:6px">🔄</div>
           <div style="font-weight:600;margin-bottom:4px">Structuring</div>
-          <div style="font-size:.8rem;color:#6b7280">3+ round-number transactions.</div>
+          <div style="font-size:.8rem;color:#6b7280">3+ round-number (₹1000 multiples) transactions. Detected via HashMap frequency count.</div>
           <div style="margin-top:8px"><span class="badge badge-yellow">MEDIUM</span></div>
         </div>
         <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:1.2rem;margin-bottom:6px">🌐</div>
           <div style="font-weight:600;margin-bottom:4px">IP Velocity</div>
-          <div style="font-size:.8rem;color:#6b7280">10+ transactions from same IP in 10 minutes.</div>
+          <div style="font-size:.8rem;color:#6b7280">10+ transactions from same IP in 10 minutes. HashMap tracks timestamps.</div>
           <div style="margin-top:8px"><span class="badge badge-yellow">MEDIUM</span></div>
         </div>
       </div>
@@ -128,25 +129,20 @@ async function init() {
     const sel = document.getElementById("accountSelect");
     sel.innerHTML = accounts.map(a =>
         `<option value="${a.id}">${a.accountType} — ${a.accountNumber}</option>`).join("");
-
     const params = new URLSearchParams(window.location.search);
     if (params.get("accountId")) sel.value = params.get("accountId");
-
     if (accounts.length > 0) loadAlerts();
 }
 
 async function loadAlerts() {
     const accountId = document.getElementById("accountSelect").value;
     if (!accountId) return;
-
     const tbody = document.getElementById("alertsBody");
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px">
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px">
       <span class="loader" style="border-color:rgba(0,0,0,.2);border-top-color:var(--primary)"></span>
     </td></tr>`;
-
     try {
         const alerts = await API.call(`/fraud/alerts?accountId=${accountId}`);
-
         document.getElementById("totalAlerts").textContent = alerts.length;
         document.getElementById("unresolvedCount").textContent = alerts.filter(a => !a.resolved).length;
         document.getElementById("criticalCount").textContent  = alerts.filter(a => a.severity === "CRITICAL").length;
@@ -154,24 +150,19 @@ async function loadAlerts() {
         document.getElementById("alertSubtitle").textContent  = `${alerts.length} alert(s) found`;
 
         if (alerts.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6">
-              <div class="empty-state">
-                <div class="icon">✅</div>
-                <p>No fraud alerts for this account. All clear!</p>
-              </div>
+            tbody.innerHTML = `<tr><td colspan="8">
+              <div class="empty-state"><div class="icon">✅</div><p>No fraud alerts. All clear!</p></div>
             </td></tr>`;
             return;
         }
 
         tbody.innerHTML = alerts.map(alert => `<tr>
           <td style="font-size:.8rem">${fmtDate(alert.date)}</td>
-          <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">
-            ${alert.alertType}
-          </code></td>
-          <td style="max-width:280px;font-size:.85rem">${alert.description}</td>
-          <td><span class="badge ${sevBadge(alert.severity)} sev-${alert.severity}">
-            ${sevIcon(alert.severity)} ${alert.severity}
-          </span></td>
+          <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">#${alert.transactionId}</code></td>
+          <td style="font-weight:600;color:var(--danger)">—</td>
+          <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">${alert.alertType}</code></td>
+          <td style="max-width:220px;font-size:.85rem">${alert.description}</td>
+          <td><span class="badge ${sevBadge(alert.severity)} sev-${alert.severity}">${sevIcon(alert.severity)} ${alert.severity}</span></td>
           <td>${alert.reversed
             ? '<span class="badge badge-blue">↩ Reversed</span>'
             : alert.resolved
@@ -184,9 +175,8 @@ async function loadAlerts() {
                </div>`
             : '<span style="color:#9ca3af;font-size:.8rem">—</span>'}</td>
         </tr>`).join("");
-
     } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center">${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="color:red;text-align:center">${e.message}</td></tr>`;
     }
 }
 
@@ -198,8 +188,7 @@ async function resolve(alertId) {
         setTimeout(() => document.getElementById("alertBox").innerHTML = "", 3000);
         loadAlerts();
     } catch(e) {
-        document.getElementById("alertBox").innerHTML =
-          `<div class="alert alert-error">${e.message}</div>`;
+        document.getElementById("alertBox").innerHTML = `<div class="alert alert-error">${e.message}</div>`;
     }
 }
 
@@ -212,15 +201,13 @@ async function reportAndReverse(alertId) {
         setTimeout(() => document.getElementById("alertBox").innerHTML = "", 5000);
         loadAlerts();
     } catch(e) {
-        document.getElementById("alertBox").innerHTML =
-          `<div class="alert alert-error">${e.message}</div>`;
+        document.getElementById("alertBox").innerHTML = `<div class="alert alert-error">${e.message}</div>`;
     }
 }
 
 function sevBadge(sev) {
     return { LOW:"badge-gray", MEDIUM:"badge-yellow", HIGH:"badge-red", CRITICAL:"badge-red" }[sev] || "badge-gray";
 }
-
 function sevIcon(sev) {
     return { LOW:"🟡", MEDIUM:"🟠", HIGH:"🔴", CRITICAL:"🟣" }[sev] || "";
 }
