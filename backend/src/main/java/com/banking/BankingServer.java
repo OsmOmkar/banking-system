@@ -22,7 +22,7 @@ public class BankingServer {
 
         BankingService bankingService = new BankingService();
 
-        // Health check endpoints — Railway checks /api/health
+        // Health check
         server.createContext("/api/health", (HttpExchange exchange) -> {
             byte[] response = "OK".getBytes();
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
@@ -49,6 +49,7 @@ public class BankingServer {
         server.createContext("/api/transactions",  new TransactionHandler(bankingService));
         server.createContext("/api/fraud/alerts",  new FraudHandler(bankingService));
         server.createContext("/api/fraud/resolve", new FraudHandler(bankingService));
+        server.createContext("/api/fraud/reverse", new FraudHandler(bankingService));
 
         server.setExecutor(Executors.newFixedThreadPool(10));
         server.start();
