@@ -87,7 +87,9 @@
 <script src="js/config.js"></script>
 <script>
   // Redirect if already logged in
-  if (Auth.isLoggedIn()) window.location.href = "pages/dashboard.html";
+  if (Auth.isLoggedIn()) const params = new URLSearchParams(window.location.search);
+const redirect = params.get("redirect");
+window.location.href = redirect || "pages/dashboard.html";;
 
   function switchTab(tab) {
     document.querySelectorAll(".tab").forEach((t, i) =>
@@ -113,7 +115,9 @@
     try {
       const data = await API.call("/auth/login", "POST", { username, password });
       Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
-      window.location.href = "pages/dashboard.html";
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      window.location.href = redirect || "pages/dashboard.html";
     } catch (e) {
       showAlert("loginAlert", e.message);
       btn.disabled = false;
