@@ -14,10 +14,16 @@ function renderSidebar(activePage) {
           <span class="icon">💳</span> My Accounts
         </a>
         <a class="nav-item ${activePage==='transactions'?'active':''}" href="transactions.html">
-          <span class="icon">💸</span> Transactions
+          <span class="icon">📋</span> Transactions
+        </a>
+        <a class="nav-item ${activePage==='payments'?'active':''}" href="payments.html">
+          <span class="icon">💸</span> Payments
         </a>
         <a class="nav-item ${activePage==='transfer'?'active':''}" href="transfer.html">
           <span class="icon">🔄</span> Transfer Money
+        </a>
+        <a class="nav-item ${activePage==='upi'?'active':''}" href="upi.html">
+          <span class="icon">📱</span> UPI
         </a>
         <a class="nav-item ${activePage==='fraud'?'active':''}" href="fraud.html">
           <span class="icon">🚨</span> Fraud Alerts
