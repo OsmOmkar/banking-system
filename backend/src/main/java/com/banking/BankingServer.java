@@ -24,32 +24,50 @@ public class BankingServer {
 
         // Health check
         server.createContext("/api/health", (HttpExchange exchange) -> {
-            byte[] response = "OK".getBytes();
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            byte[] response = "OK".getBytes();
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
             exchange.getResponseBody().close();
         });
 
         server.createContext("/", (HttpExchange exchange) -> {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
             byte[] response = "JavaBank API is running!".getBytes();
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
             exchange.getResponseBody().close();
         });
 
-        // API routes
+        // Auth routes
         server.createContext("/api/auth/login",    new AuthHandler());
         server.createContext("/api/auth/register", new AuthHandler());
         server.createContext("/api/auth/logout",   new AuthHandler());
+
+        // Account routes
         server.createContext("/api/accounts",      new AccountHandler(bankingService));
+
+        // Transaction routes
         server.createContext("/api/deposit",       new TransactionHandler(bankingService));
         server.createContext("/api/withdraw",      new TransactionHandler(bankingService));
         server.createContext("/api/transfer",      new TransactionHandler(bankingService));
         server.createContext("/api/transactions",  new TransactionHandler(bankingService));
+
+        // Fraud routes
         server.createContext("/api/fraud/alerts",  new FraudHandler(bankingService));
         server.createContext("/api/fraud/resolve", new FraudHandler(bankingService));
         server.createContext("/api/fraud/reverse", new FraudHandler(bankingService));
+
+        // UPI routes
+        server.createContext("/api/upi/accounts",  new UpiHandler(bankingService));
+        server.createContext("/api/upi/lookup",    new UpiHandler(bankingService));
+        server.createContext("/api/upi/pay",       new UpiHandler(bankingService));
 
         server.setExecutor(Executors.newFixedThreadPool(10));
         server.start();
