@@ -8,7 +8,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-// SYLLABUS: Unit V - JDBC, Unit IV - Collections
 public class TransactionDAO {
 
     public Transaction save(Transaction tx) {
@@ -40,6 +39,19 @@ public class TransactionDAO {
         return tx;
     }
 
+    public Transaction findById(int id) {
+        String sql = "SELECT * FROM transactions WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return mapRow(rs);
+        } catch (SQLException e) {
+            System.err.println("[TransactionDAO] FindById error: " + e.getMessage());
+        }
+        return null;
+    }
+
     public void markFlagged(int transactionId) {
         String sql = "UPDATE transactions SET is_flagged = TRUE WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -51,7 +63,6 @@ public class TransactionDAO {
         }
     }
 
-    // SYLLABUS: Unit IV - ArrayList (Collections)
     public List<Transaction> findRecentByAccount(int accountId, int limit) {
         List<Transaction> list = new ArrayList<>();
         String sql = "SELECT * FROM transactions WHERE account_id = ? ORDER BY created_at DESC LIMIT ?";
