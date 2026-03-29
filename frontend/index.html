@@ -87,9 +87,7 @@
 <script src="js/config.js"></script>
 <script>
   // Redirect if already logged in
-  if (Auth.isLoggedIn()) const params = new URLSearchParams(window.location.search);
-const redirect = params.get("redirect");
-window.location.href = redirect || "pages/dashboard.html";;
+  if (Auth.isLoggedIn()) window.location.href = redirect || "pages/dashboard.html";
 
   function switchTab(tab) {
     document.querySelectorAll(".tab").forEach((t, i) =>
