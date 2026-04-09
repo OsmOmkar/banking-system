@@ -22,22 +22,40 @@ public class BankingServer {
 
         BankingService bankingService = new BankingService();
 
+<<<<<<< HEAD
         // Health check endpoints
         server.createContext("/api/health", (HttpExchange exchange) -> {
             byte[] response = "OK".getBytes();
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+=======
+        // Health check
+        server.createContext("/api/health", (HttpExchange exchange) -> {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            byte[] response = "OK".getBytes();
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
             exchange.getResponseBody().close();
         });
 
         server.createContext("/", (HttpExchange exchange) -> {
+<<<<<<< HEAD
+=======
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
             byte[] response = "JavaBank API is running!".getBytes();
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
             exchange.getResponseBody().close();
         });
 
+<<<<<<< HEAD
         // -------------------------------------------------------
         // Auth endpoints
         // -------------------------------------------------------
@@ -55,11 +73,23 @@ public class BankingServer {
         // Account & transaction endpoints
         // -------------------------------------------------------
         server.createContext("/api/accounts",      new AccountHandler(bankingService));
+=======
+        // Auth routes
+        server.createContext("/api/auth/login",    new AuthHandler());
+        server.createContext("/api/auth/register", new AuthHandler());
+        server.createContext("/api/auth/logout",   new AuthHandler());
+
+        // Account routes
+        server.createContext("/api/accounts",      new AccountHandler(bankingService));
+
+        // Transaction routes
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         server.createContext("/api/deposit",       new TransactionHandler(bankingService));
         server.createContext("/api/withdraw",      new TransactionHandler(bankingService));
         server.createContext("/api/transfer",      new TransactionHandler(bankingService));
         server.createContext("/api/transactions",  new TransactionHandler(bankingService));
 
+<<<<<<< HEAD
         // -------------------------------------------------------
         // Fraud endpoints
         // -------------------------------------------------------
@@ -74,6 +104,17 @@ public class BankingServer {
         server.createContext("/api/pending",         pendingHandler); // GET: list pending
         server.createContext("/api/pending/confirm", pendingHandler); // POST: confirm
         server.createContext("/api/pending/reject",  pendingHandler); // POST: reject
+=======
+        // Fraud routes
+        server.createContext("/api/fraud/alerts",  new FraudHandler(bankingService));
+        server.createContext("/api/fraud/resolve", new FraudHandler(bankingService));
+        server.createContext("/api/fraud/reverse", new FraudHandler(bankingService));
+
+        // UPI routes
+        server.createContext("/api/upi/accounts",  new UpiHandler(bankingService));
+        server.createContext("/api/upi/lookup",    new UpiHandler(bankingService));
+        server.createContext("/api/upi/pay",       new UpiHandler(bankingService));
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 
         server.setExecutor(Executors.newFixedThreadPool(10));
         server.start();

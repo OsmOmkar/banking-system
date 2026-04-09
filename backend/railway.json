@@ -4,7 +4,11 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
+<<<<<<< HEAD
     "startCommand": "java -cp out:lib/postgresql.jar com.banking.BankingServer",
+=======
+    "startCommand": "java -Duser.timezone=Asia/Kolkata -cp out:lib/postgresql.jar com.banking.BankingServer",
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     "healthcheckPath": "/api/health",
     "restartPolicyType": "ON_FAILURE"
   }

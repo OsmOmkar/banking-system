@@ -4,20 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Transactions — JavaBank</title>
+<<<<<<< HEAD
   <link rel="stylesheet" href="/css/style.css">
+=======
+  <link rel="stylesheet" href="../css/style.css">
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 </head>
 <body>
 <div class="app-layout">
   <div id="sidebarMount"></div>
+<<<<<<< HEAD
 
   <main class="main-content">
     <div class="page-header">
       <h1>Transactions 💸</h1>
       <p>Deposit, withdraw, and view your transaction history</p>
+=======
+  <main class="main-content">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h1>Transactions 📋</h1>
+        <p>View your complete transaction history</p>
+      </div>
+      <a href="payments.html" class="btn btn-primary">💸 Make Payment</a>
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     </div>
 
     <div id="alertBox"></div>
 
+<<<<<<< HEAD
     <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start">
 
       <!-- LEFT: Action panel -->
@@ -98,13 +113,57 @@
             </tbody>
           </table>
         </div>
+=======
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <div>
+          <label style="font-weight:500;font-size:.9rem;margin-right:8px">Account:</label>
+          <select id="accountSelect" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem" onchange="loadTransactions()">
+            <option value="">Loading accounts...</option>
+          </select>
+        </div>
+        <div id="balanceDisplay" style="display:none;padding:10px 16px;background:#f0f9ff;border-radius:8px">
+          <span style="font-size:.78rem;color:#6b7280">Balance: </span>
+          <span style="font-size:1.1rem;font-weight:700;color:var(--primary)" id="balVal">-</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadTransactions()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Transaction History</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Txn ID</th>
+              <th>Date & Time</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Balance After</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="txBody">
+            <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:32px">
+              Select an account to view transactions
+            </td></tr>
+          </tbody>
+        </table>
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
       </div>
     </div>
   </main>
 </div>
 
+<<<<<<< HEAD
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
+=======
+<script src="../js/config.js"></script>
+<script src="../js/nav.js"></script>
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 <script>
 Auth.requireAuth();
 renderSidebar("transactions");
@@ -118,6 +177,7 @@ async function init() {
         `<option value="${a.id}" data-balance="${a.balance}">
           ${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})
         </option>`).join("");
+<<<<<<< HEAD
 
     // Check for accountId in URL
     const params = new URLSearchParams(window.location.search);
@@ -127,14 +187,24 @@ async function init() {
         updateBalance();
         loadTransactions();
     }
+=======
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("accountId")) sel.value = params.get("accountId");
+    if (accounts.length > 0) { updateBalance(); loadTransactions(); }
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 }
 
 function updateBalance() {
     const sel = document.getElementById("accountSelect");
     const opt = sel.options[sel.selectedIndex];
+<<<<<<< HEAD
     const bal = opt?.dataset?.balance;
     if (bal !== undefined) {
         document.getElementById("balVal").textContent = fmt(bal);
+=======
+    if (opt?.dataset?.balance !== undefined) {
+        document.getElementById("balVal").textContent = fmt(opt.dataset.balance);
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         document.getElementById("balanceDisplay").style.display = "";
     }
 }
@@ -143,6 +213,7 @@ async function loadTransactions() {
     const accountId = document.getElementById("accountSelect").value;
     if (!accountId) return;
     updateBalance();
+<<<<<<< HEAD
 
     const tbody = document.getElementById("txBody");
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px">
@@ -168,6 +239,24 @@ async function loadTransactions() {
               <td class="${isCredit ? 'amount-credit' : 'amount-debit'}">
                 ${isCredit ? "+" : "-"}${fmt(tx.amount)}
               </td>
+=======
+    const tbody = document.getElementById("txBody");
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px"><span class="loader" style="border-color:rgba(0,0,0,.2);border-top-color:var(--primary)"></span></td></tr>`;
+    try {
+        const txList = await API.call(`/transactions?accountId=${accountId}`);
+        if (txList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📋</div><p>No transactions yet</p></div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = txList.map(tx => {
+            const isCredit = tx.type === "DEPOSIT" || tx.type === "INTEREST";
+            return `<tr>
+              <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">#${tx.id}</code></td>
+              <td style="font-size:.8rem">${fmtDate(tx.date)}</td>
+              <td><span class="badge ${txBadge(tx.type)}">${tx.type}</span></td>
+              <td style="max-width:200px;font-size:.85rem">${tx.description || (tx.recipient ? "To: "+tx.recipient : "-")}</td>
+              <td class="${isCredit ? 'amount-credit' : 'amount-debit'}">${isCredit ? "+" : "-"}${fmt(tx.amount)}</td>
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
               <td>${fmt(tx.balanceAfter)}</td>
               <td>${tx.flagged
                 ? '<span class="badge badge-red">⚠️ Flagged</span>'
@@ -175,6 +264,7 @@ async function loadTransactions() {
             </tr>`;
         }).join("");
     } catch(e) {
+<<<<<<< HEAD
         tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center">${e.message}</td></tr>`;
     }
 }
@@ -243,6 +333,14 @@ function showAlert(msg, type = "success") {
 function txBadge(type) {
     return { DEPOSIT:"badge-green", WITHDRAWAL:"badge-red",
              TRANSFER:"badge-blue", INTEREST:"badge-yellow" }[type] || "badge-gray";
+=======
+        tbody.innerHTML = `<tr><td colspan="7" style="color:red;text-align:center">${e.message}</td></tr>`;
+    }
+}
+
+function txBadge(type) {
+    return { DEPOSIT:"badge-green", WITHDRAWAL:"badge-red", TRANSFER:"badge-blue", INTEREST:"badge-yellow" }[type] || "badge-gray";
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 }
 
 init();

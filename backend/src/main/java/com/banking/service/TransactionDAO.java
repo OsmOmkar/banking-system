@@ -8,7 +8,10 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+<<<<<<< HEAD
 // SYLLABUS: Unit V - JDBC, Unit IV - Collections
+=======
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 public class TransactionDAO {
 
     public Transaction save(Transaction tx) {
@@ -40,6 +43,22 @@ public class TransactionDAO {
         return tx;
     }
 
+<<<<<<< HEAD
+=======
+    public Transaction findById(int id) {
+        String sql = "SELECT * FROM transactions WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return mapRow(rs);
+        } catch (SQLException e) {
+            System.err.println("[TransactionDAO] FindById error: " + e.getMessage());
+        }
+        return null;
+    }
+
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     public void markFlagged(int transactionId) {
         String sql = "UPDATE transactions SET is_flagged = TRUE WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -51,7 +70,10 @@ public class TransactionDAO {
         }
     }
 
+<<<<<<< HEAD
     // SYLLABUS: Unit IV - ArrayList (Collections)
+=======
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     public List<Transaction> findRecentByAccount(int accountId, int limit) {
         List<Transaction> list = new ArrayList<>();
         String sql = "SELECT * FROM transactions WHERE account_id = ? ORDER BY created_at DESC LIMIT ?";

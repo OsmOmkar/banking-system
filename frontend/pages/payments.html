@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payments — JavaBank</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Payments 💸</h1>
+      <p>Deposit or withdraw money from your accounts</p>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div style="display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">Select Account</div>
+          <select id="accountSelect" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem" onchange="updateBalance()">
+            <option value="">Loading accounts...</option>
+          </select>
+          <div id="balanceDisplay" style="margin-top:12px;padding:12px;background:#f0f9ff;border-radius:8px;display:none">
+            <div style="font-size:.78rem;color:#6b7280">Current Balance</div>
+            <div style="font-size:1.4rem;font-weight:700;color:var(--primary)" id="balVal">-</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="tabs" style="margin-bottom:16px">
+            <button class="tab active" onclick="setTab('deposit')">💰 Deposit</button>
+            <button class="tab" onclick="setTab('withdraw')">📤 Withdraw</button>
+          </div>
+
+          <div id="depositPane">
+            <div class="form-group">
+              <label>Amount (₹)</label>
+              <input type="number" id="depositAmt" placeholder="Enter amount" min="1">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="depositDesc" placeholder="e.g. Salary, Cash deposit">
+            </div>
+            <button class="btn btn-success btn-full" id="depositBtn" onclick="doDeposit()">
+              💰 Deposit Money
+            </button>
+          </div>
+
+          <div id="withdrawPane" style="display:none">
+            <div class="form-group">
+              <label>Amount (₹)</label>
+              <input type="number" id="withdrawAmt" placeholder="Enter amount" min="1">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="withdrawDesc" placeholder="e.g. ATM withdrawal">
+            </div>
+            <button class="btn btn-danger btn-full" id="withdrawBtn" onclick="doWithdraw()">
+              📤 Withdraw Money
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📋 Recent Transactions</span>
+          <button class="btn btn-outline btn-sm" onclick="loadTransactions()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Date & Time</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Balance After</th>
+              </tr>
+            </thead>
+            <tbody id="txBody">
+              <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:32px">Select an account</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Auth.requireAuth();
+renderSidebar("payments");
+
+let accounts = [];
+
+async function init() {
+    accounts = await API.call("/accounts");
+    const sel = document.getElementById("accountSelect");
+    if (accounts.length === 0) {
+        sel.innerHTML = '<option value="">No accounts — create one first</option>';
+        return;
+    }
+    sel.innerHTML = accounts.map(a =>
+        `<option value="${a.id}" data-balance="${a.balance}">
+          ${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})
+        </option>`).join("");
+    updateBalance();
+    loadTransactions();
+}
+
+function updateBalance() {
+    const sel = document.getElementById("accountSelect");
+    const opt = sel.options[sel.selectedIndex];
+    if (opt?.dataset?.balance !== undefined) {
+        document.getElementById("balVal").textContent = fmt(opt.dataset.balance);
+        document.getElementById("balanceDisplay").style.display = "";
+        loadTransactions();
+    }
+}
+
+async function loadTransactions() {
+    const accountId = document.getElementById("accountSelect").value;
+    if (!accountId) return;
+    const tbody = document.getElementById("txBody");
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:16px"><span class="loader" style="border-color:rgba(0,0,0,.2);border-top-color:var(--primary)"></span></td></tr>`;
+    try {
+        const txList = await API.call(`/transactions?accountId=${accountId}`);
+        const filtered = txList.filter(t => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").slice(0, 20);
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:24px">No deposit/withdrawal transactions yet</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = filtered.map(tx => {
+            const isCredit = tx.type === "DEPOSIT";
+            return `<tr>
+              <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">#${tx.id}</code></td>
+              <td style="font-size:.8rem">${fmtDate(tx.date)}</td>
+              <td><span class="badge ${isCredit ? 'badge-green' : 'badge-red'}">${tx.type}</span></td>
+              <td style="font-size:.85rem">${tx.description || "-"}</td>
+              <td class="${isCredit ? 'amount-credit' : 'amount-debit'}">${isCredit ? "+" : "-"}${fmt(tx.amount)}</td>
+              <td>${fmt(tx.balanceAfter)}</td>
+            </tr>`;
+        }).join("");
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center">${e.message}</td></tr>`;
+    }
+}
+
+function setTab(tab) {
+    document.querySelectorAll(".tab").forEach((t, i) =>
+        t.classList.toggle("active", (i===0)===(tab==="deposit")));
+    document.getElementById("depositPane").style.display  = tab === "deposit"  ? "" : "none";
+    document.getElementById("withdrawPane").style.display = tab === "withdraw" ? "" : "none";
+}
+
+async function doDeposit() {
+    const accountId = document.getElementById("accountSelect").value;
+    const amount = parseFloat(document.getElementById("depositAmt").value);
+    const description = document.getElementById("depositDesc").value || "Deposit";
+    if (!accountId) { showAlert("Select an account first", "warning"); return; }
+    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+    const btn = document.getElementById("depositBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Processing...';
+    try {
+        const tx = await API.call("/deposit", "POST", { accountId: parseInt(accountId), amount, description });
+        showAlert(`✅ Deposited ${fmt(amount)} successfully! New balance: ${fmt(tx.balanceAfter)}`, "success");
+        document.getElementById("depositAmt").value = "";
+        document.getElementById("depositDesc").value = "";
+        await init();
+    } catch(e) { showAlert(e.message, "error"); }
+    finally { btn.disabled = false; btn.innerHTML = "💰 Deposit Money"; }
+}
+
+async function doWithdraw() {
+    const accountId = document.getElementById("accountSelect").value;
+    const amount = parseFloat(document.getElementById("withdrawAmt").value);
+    const description = document.getElementById("withdrawDesc").value || "Withdrawal";
+    if (!accountId) { showAlert("Select an account first", "warning"); return; }
+    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+    const btn = document.getElementById("withdrawBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Processing...';
+    try {
+        const tx = await API.call("/withdraw", "POST", { accountId: parseInt(accountId), amount, description });
+        showAlert(`✅ Withdrew ${fmt(amount)}. New balance: ${fmt(tx.balanceAfter)}`, "success");
+        document.getElementById("withdrawAmt").value = "";
+        document.getElementById("withdrawDesc").value = "";
+        await init();
+    } catch(e) { showAlert(e.message, "error"); }
+    finally { btn.disabled = false; btn.innerHTML = "📤 Withdraw Money"; }
+}
+
+function showAlert(msg, type = "success") {
+    document.getElementById("alertBox").innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    if (type === "success") setTimeout(() => document.getElementById("alertBox").innerHTML = "", 5000);
+}
+
+init();
+</script>
+</body>
+</html>

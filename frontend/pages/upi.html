@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UPI — JavaBank</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .upi-card {
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        color: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 16px;
+    }
+    .upi-id-display {
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: .05em;
+        margin: 8px 0;
+        padding: 10px 16px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        display: inline-block;
+    }
+    .qr-box {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        display: inline-block;
+        margin-top: 12px;
+    }
+    .recipient-card {
+        padding: 16px;
+        background: #f0fdf4;
+        border: 2px solid #86efac;
+        border-radius: 10px;
+        margin-bottom: 16px;
+        display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <h1>📱 UPI Payments</h1>
+      <p>Send and receive money instantly using UPI</p>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- LEFT: My UPI IDs -->
+      <div>
+        <div class="card">
+          <div class="card-title">💳 My UPI IDs</div>
+          <div id="myUpiList">
+            <div style="color:#9ca3af;padding:16px">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Send Money via UPI -->
+      <div>
+        <div class="card">
+          <div class="card-title">📤 Send via UPI</div>
+
+          <div class="form-group">
+            <label>From Account</label>
+            <select id="fromAccount" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+              <option value="">Select account...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>To UPI ID</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="toUpiId" placeholder="e.g. ACC001234567@javabank" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+              <button class="btn btn-outline" onclick="lookupUpi()">Verify</button>
+            </div>
+          </div>
+
+          <div class="recipient-card" id="recipientCard">
+            <div style="font-size:.8rem;color:#6b7280">Sending to</div>
+            <div style="font-weight:700;font-size:1.1rem;margin-top:4px" id="recipientName">-</div>
+            <div style="font-size:.85rem;color:#6b7280;margin-top:2px" id="recipientUpi">-</div>
+          </div>
+
+          <div class="form-group">
+            <label>Amount (₹)</label>
+            <input type="number" id="upiAmount" placeholder="Enter amount" min="1" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+          </div>
+
+          <div class="form-group">
+            <label>Note (optional)</label>
+            <input type="text" id="upiNote" placeholder="e.g. Rent, Food, Loan" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+          </div>
+
+          <button class="btn btn-primary btn-full" id="upiPayBtn" onclick="doUpiPay()">
+            📱 Send Money
+          </button>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">ℹ️ UPI Info</div>
+          <div style="font-size:.875rem;color:#4b5563;line-height:1.8">
+            <p>• Each bank account has a unique UPI ID</p>
+            <p>• Share your QR code to receive payments</p>
+            <p>• Transfers are instant between JavaBank accounts</p>
+            <p>• Fraud detection runs on all UPI payments</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Auth.requireAuth();
+renderSidebar("upi");
+
+const user = Auth.getUser();
+let verifiedUpiId = null;
+
+async function init() {
+    try {
+        const accounts = await API.call("/upi/accounts");
+        const fromSel = document.getElementById("fromAccount");
+        fromSel.innerHTML = accounts.map(a =>
+            `<option value="${a.id}" data-upi="${a.upiId}">${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})</option>`
+        ).join("");
+
+        const list = document.getElementById("myUpiList");
+        if (accounts.length === 0) {
+            list.innerHTML = `<div style="color:#9ca3af;padding:16px">No accounts found. Create an account first.</div>`;
+            return;
+        }
+
+        list.innerHTML = accounts.map((acc, i) => `
+          <div class="upi-card" style="margin-bottom:${i < accounts.length-1 ? '16px' : '0'}">
+            <div style="font-size:.8rem;opacity:.8;text-transform:uppercase;letter-spacing:.1em">${acc.accountType} Account</div>
+            <div style="font-size:.85rem;opacity:.7;margin-top:2px">${acc.accountNumber}</div>
+            <div class="upi-id-display">${acc.upiId}</div>
+            <div style="margin-top:8px;font-size:.85rem;opacity:.8">Balance: ${fmt(acc.balance)}</div>
+            <div class="qr-box" id="qr-${acc.id}"></div>
+            <div style="margin-top:8px">
+              <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="copyUpi('${acc.upiId}')">
+                📋 Copy UPI ID
+              </button>
+              <a href="pay.html?to=${acc.upiId}&name=${encodeURIComponent(user.fullName || user.username)}"
+                 target="_blank"
+                 class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;margin-left:6px;text-decoration:none">
+                🔗 Payment Link
+              </a>
+            </div>
+          </div>
+        `).join("");
+
+        // Generate QR codes
+        accounts.forEach(acc => {
+            const payUrl = `${window.location.origin}/pages/pay.html?to=${acc.upiId}&name=${encodeURIComponent(user.fullName || user.username)}`;
+            new QRCode(document.getElementById(`qr-${acc.id}`), {
+                text: payUrl,
+                width: 140,
+                height: 140,
+                colorDark: "#1a56db",
+                colorLight: "#ffffff",
+            });
+        });
+
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function lookupUpi() {
+    const upiId = document.getElementById("toUpiId").value.trim();
+    if (!upiId) { showAlert("Enter a UPI ID to verify", "warning"); return; }
+    try {
+        const result = await API.call(`/upi/lookup?upiId=${encodeURIComponent(upiId)}`);
+        verifiedUpiId = upiId;
+        document.getElementById("recipientName").textContent = result.name;
+        document.getElementById("recipientUpi").textContent = upiId;
+        document.getElementById("recipientCard").style.display = "";
+        showAlert(`✅ UPI ID verified — ${result.name}`, "success");
+    } catch(e) {
+        verifiedUpiId = null;
+        document.getElementById("recipientCard").style.display = "none";
+        showAlert("UPI ID not found. Please check and try again.", "error");
+    }
+}
+
+async function doUpiPay() {
+    const fromAccountId = parseInt(document.getElementById("fromAccount").value);
+    const toUpiId = document.getElementById("toUpiId").value.trim();
+    const amount = parseFloat(document.getElementById("upiAmount").value);
+    const note = document.getElementById("upiNote").value || "UPI Payment";
+
+    if (!fromAccountId) { showAlert("Select a source account", "warning"); return; }
+    if (!toUpiId) { showAlert("Enter recipient UPI ID", "warning"); return; }
+    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+    if (!verifiedUpiId) { showAlert("Please verify the UPI ID first", "warning"); return; }
+
+    const btn = document.getElementById("upiPayBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Sending...';
+
+    try {
+        const tx = await API.call("/upi/pay", "POST", { fromAccountId, toUpiId, amount, note });
+        const msg = tx.flagged
+            ? `✅ Sent ${fmt(amount)} to ${toUpiId} — ⚠️ flagged for review`
+            : `✅ Sent ${fmt(amount)} to ${toUpiId} successfully!`;
+        showAlert(msg, tx.flagged ? "warning" : "success");
+        document.getElementById("toUpiId").value = "";
+        document.getElementById("upiAmount").value = "";
+        document.getElementById("upiNote").value = "";
+        document.getElementById("recipientCard").style.display = "none";
+        verifiedUpiId = null;
+        await init();
+    } catch(e) {
+        showAlert(e.message, "error");
+    } finally {
+        btn.disabled = false; btn.innerHTML = "📱 Send Money";
+    }
+}
+
+function copyUpi(upiId) {
+    navigator.clipboard.writeText(upiId).then(() => showAlert("UPI ID copied!", "success"));
+}
+
+function showAlert(msg, type = "success") {
+    document.getElementById("alertBox").innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    if (type === "success") setTimeout(() => document.getElementById("alertBox").innerHTML = "", 4000);
+}
+
+init();
+</script>
+</body>
+</html>

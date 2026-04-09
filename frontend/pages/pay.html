@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pay via JavaBank UPI</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .pay-wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #7c3aed 0%, #1a56db 100%);
+    }
+    .pay-card {
+        background: white;
+        border-radius: 20px;
+        padding: 36px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .recipient-info {
+        text-align: center;
+        padding: 20px;
+        background: #f5f3ff;
+        border-radius: 12px;
+        margin-bottom: 24px;
+    }
+    .recipient-avatar {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin: 0 auto 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="pay-wrap">
+  <div class="pay-card">
+    <div style="text-align:center;margin-bottom:20px">
+      <h2 style="color:#7c3aed">🏦 JavaBank UPI</h2>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <!-- Recipient Info -->
+    <div class="recipient-info">
+      <div class="recipient-avatar">👤</div>
+      <div style="font-weight:700;font-size:1.2rem" id="recipientName">Loading...</div>
+      <div style="color:#6b7280;font-size:.85rem;margin-top:4px" id="recipientUpiId">-</div>
+    </div>
+
+    <!-- Not logged in state -->
+    <div id="loginPrompt" style="display:none;text-align:center">
+      <p style="color:#6b7280;margin-bottom:16px">Please login to send money</p>
+      <button class="btn btn-primary btn-full" onclick="goToLogin()">Login to Pay</button>
+    </div>
+
+    <!-- Logged in - payment form -->
+    <div id="payForm" style="display:none">
+      <div class="form-group">
+        <label>From Account</label>
+        <select id="fromAccount" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+          <option value="">Select account...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Amount (₹)</label>
+        <input type="number" id="payAmount" placeholder="Enter amount" min="1" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+      </div>
+
+      <div class="form-group">
+        <label>Note (optional)</label>
+        <input type="text" id="payNote" placeholder="e.g. Rent, Food" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
+      </div>
+
+      <button class="btn btn-primary btn-full" id="payBtn" onclick="doPay()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+        📱 Pay Now
+      </button>
+
+      <div id="userInfo" style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280"></div>
+    </div>
+
+    <!-- Success state -->
+    <div id="successState" style="display:none;text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">✅</div>
+      <h3 style="color:var(--success)">Payment Successful!</h3>
+      <div id="successMsg" style="color:#6b7280;margin-top:8px;font-size:.9rem"></div>
+      <button class="btn btn-outline" style="margin-top:16px" onclick="window.location.href='dashboard.html'">
+        Go to Dashboard
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const toUpiId = params.get("to");
+const recipientName = params.get("name") || "JavaBank User";
+
+document.getElementById("recipientName").textContent = recipientName;
+document.getElementById("recipientUpiId").textContent = toUpiId || "Unknown UPI ID";
+
+async function init() {
+    if (!toUpiId) {
+        showAlert("Invalid payment link", "error");
+        return;
+    }
+
+    if (!Auth.isLoggedIn()) {
+        document.getElementById("loginPrompt").style.display = "";
+        return;
+    }
+
+    try {
+        const accounts = await API.call("/upi/accounts");
+        const sel = document.getElementById("fromAccount");
+        sel.innerHTML = accounts.map(a =>
+            `<option value="${a.id}">${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})</option>`
+        ).join("");
+
+        const user = Auth.getUser();
+        document.getElementById("userInfo").textContent = `Logged in as ${user.fullName || user.username}`;
+        document.getElementById("payForm").style.display = "";
+    } catch(e) {
+        showAlert("Failed to load accounts: " + e.message, "error");
+    }
+}
+
+function goToLogin() {
+    const returnUrl = encodeURIComponent(window.location.href);
+    window.location.href = `../index.html?redirect=${returnUrl}`;
+}
+
+async function doPay() {
+    const fromAccountId = parseInt(document.getElementById("fromAccount").value);
+    const amount = parseFloat(document.getElementById("payAmount").value);
+    const note = document.getElementById("payNote").value || "UPI Payment";
+
+    if (!fromAccountId) { showAlert("Select an account", "warning"); return; }
+    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+
+    const btn = document.getElementById("payBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Processing...';
+
+    try {
+        const tx = await API.call("/upi/pay", "POST", { fromAccountId, toUpiId, amount, note });
+        document.getElementById("payForm").style.display = "none";
+        document.getElementById("successState").style.display = "";
+        document.getElementById("successMsg").textContent =
+            `${fmt(amount)} sent to ${recipientName} (${toUpiId})`;
+    } catch(e) {
+        showAlert(e.message, "error");
+        btn.disabled = false; btn.innerHTML = "📱 Pay Now";
+    }
+}
+
+function showAlert(msg, type = "success") {
+    document.getElementById("alertBox").innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+init();
+</script>
+</body>
+</html>

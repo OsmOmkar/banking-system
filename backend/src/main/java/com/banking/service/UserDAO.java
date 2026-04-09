@@ -124,6 +124,7 @@ public class UserDAO {
         user.setPhone(rs.getString("phone"));
         user.setCreatedAt(rs.getTimestamp("created_at"));
         user.setActive(rs.getBoolean("is_active"));
+<<<<<<< HEAD
         // Read KYC verification columns if they exist in the result set
         try { user.setEmailVerified(rs.getBoolean("email_verified")); } catch (SQLException ignored) {}
         try { user.setPhoneVerified(rs.getBoolean("phone_verified")); } catch (SQLException ignored) {}
@@ -193,4 +194,8 @@ public class UserDAO {
         }
         return null;
     }
+=======
+        return user;
+    }
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 }

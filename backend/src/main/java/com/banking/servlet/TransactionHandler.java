@@ -45,6 +45,7 @@ public class TransactionHandler extends BaseHandler {
         // SYLLABUS: Unit III - catch custom exceptions separately
         } catch (InsufficientFundsException e) {
             sendResponse(exchange, 400, JsonUtil.error("Insufficient funds: " + e.getMessage()));
+<<<<<<< HEAD
 
         } catch (InvalidAmountException e) {
             sendResponse(exchange, 400, JsonUtil.error("Invalid amount: " + e.getMessage()));
@@ -73,6 +74,14 @@ public class TransactionHandler extends BaseHandler {
                 sendResponse(exchange, 403, JsonUtil.error(
                         "Transaction blocked — fraud detected: " + msg));
             }
+=======
+        } catch (InvalidAmountException e) {
+            sendResponse(exchange, 400, JsonUtil.error("Invalid amount: " + e.getMessage()));
+        } catch (AccountNotFoundException e) {
+            sendResponse(exchange, 404, JsonUtil.error("Account not found: " + e.getMessage()));
+        } catch (FraudDetectedException e) {
+            sendResponse(exchange, 403, JsonUtil.error("Transaction blocked - fraud detected: " + e.getMessage()));
+>>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         }
     }
 
