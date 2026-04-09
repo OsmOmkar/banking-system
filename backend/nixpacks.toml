@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["jdk17", "curl"]
+
+[phases.build]
+cmds = ["bash build.sh"]
+
+[start]
+cmd = "java -cp out:lib/postgresql.jar com.banking.BankingServer"

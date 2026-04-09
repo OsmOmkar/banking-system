@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaBank — Pending Confirmations</title>
+  <meta name="description"
+    content="Review and confirm or reject pending transactions flagged by JavaBank's fraud protection system.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body {
+      background: #0f172a;
+      font-family: 'Inter', sans-serif;
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+
+    .page-wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .back-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #f1f5f9;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .page-subtitle {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .empty-state .icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+      color: #94a3b8;
+      font-size: 1.2rem;
+      margin: 0 0 0.5rem;
+    }
+
+    .empty-state p {
+      color: #475569;
+      font-size: 0.9rem;
+    }
+
+    /* ── Pending Transaction Card ── */
+    .pending-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 2px solid rgba(239, 68, 68, 0.4);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      animation: cardPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes cardPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+
+      50% {
+        box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.15);
+      }
+    }
+
+    .pending-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #ef4444, #f97316);
+    }
+
+    .fraud-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .fraud-badge.HIGH {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+
+    .fraud-badge.CRITICAL {
+      background: rgba(220, 38, 38, 0.2);
+      border-color: rgba(220, 38, 38, 0.5);
+      color: #f87171;
+    }
+
+    .fraud-badge.MEDIUM {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fcd34d;
+    }
+
+    .tx-amount {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #f87171;
+      margin: 0.5rem 0;
+    }
+
+    .tx-type-label {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tx-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .tx-detail-item {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 0.75rem;
+    }
+
+    .tx-detail-label {
+      font-size: 0.7rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+    }
+
+    .tx-detail-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      word-break: break-all;
+    }
+
+    .fraud-reason-box {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+      color: #fca5a5;
+    }
+
+    .fraud-reason-box strong {
+      color: #f87171;
+    }
+
+    /* ── Countdown Timer ── */
+    .countdown-wrap {
+      text-align: center;
+      margin: 1.25rem 0;
+    }
+
+    .countdown-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .countdown-timer {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      font-variant-numeric: tabular-nums;
+      color: #f59e0b;
+      text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+      transition: color 0.3s;
+    }
+
+    .countdown-timer.urgent {
+      color: #ef4444;
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      animation: blink 0.8s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    .countdown-sub {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* ── Progress Bar ── */
+    .progress-bar {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      margin: 0.5rem 0 1.5rem;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #22c55e, #f59e0b);
+      transition: width 1s linear, background 0.5s;
+    }
+
+    .progress-fill.urgent {
+      background: linear-gradient(90deg, #f97316, #ef4444);
+    }
+
+    /* ── Action Buttons ── */
+    .action-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .btn-confirm {
+      padding: 0.9rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-confirm:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+    }
+
+    .btn-reject {
+      padding: 0.9rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-reject:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+    }
+
+    .btn-confirm:disabled,
+    .btn-reject:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Result Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #1e293b;
+      border-radius: 20px;
+      padding: 2.5rem;
+      text-align: center;
+      max-width: 360px;
+      width: 90%;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      animation: modalIn 0.3s ease;
+    }
+
+    @keyframes modalIn {
+      from {
+        transform: scale(0.9) translateY(10px);
+        opacity: 0;
+      }
+
+      to {
+        transform: none;
+        opacity: 1;
+      }
+    }
+
+    .modal-icon {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+    }
+
+    .modal-body {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .modal-btn {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      background: #3b82f6;
+      color: white;
+    }
+
+    .loader {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page-wrap">
+    <div class="page-header">
+      <a href="dashboard.html" class="back-btn">← Dashboard</a>
+      <div>
+        <div class="page-title">🚨 Fraud Pending Confirmations</div>
+        <div class="page-subtitle">Review flagged transactions. Respond within 5 minutes or they auto-cancel.</div>
+      </div>
+    </div>
+
+    <div id="alertBox"></div>
+    <div id="pendingList"></div>
+  </div>
+
+  <!-- Result Modal -->
+  <div class="modal-overlay" id="resultModal">
+    <div class="modal-box">
+      <div class="modal-icon" id="modalIcon">✅</div>
+      <div class="modal-title" id="modalTitle">Done</div>
+      <div class="modal-body" id="modalBody"></div>
+      <button class="modal-btn" onclick="closeModal()">OK</button>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script>
+    Auth.requireAuth();
+
+    // ── Poll for pending transactions ───────────────────────
+    let pendingData = [];
+    let timers = {}; // per-card countdown timer IDs
+
+    async function loadPending() {
+      try {
+        const list = await API.call('/pending', 'GET');
+        pendingData = Array.isArray(list) ? list : [];
+        renderList();
+      } catch (e) {
+        document.getElementById('alertBox').innerHTML =
+          `<div class="alert alert-error">Failed to load pending transactions: ${e.message}</div>`;
+      }
+    }
+
+    function renderList() {
+      const container = document.getElementById('pendingList');
+      if (pendingData.length === 0) {
+        container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🛡️</div>
+          <h3>All Clear!</h3>
+          <p>No pending transactions requiring your confirmation.<br>Your account is safe.</p>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = pendingData.map(pt => cardHTML(pt)).join('');
+
+      // Start countdown timers for each card
+      pendingData.forEach(pt => startCountdown(pt));
+    }
+
+    function cardHTML(pt) {
+      const amtStr = '₹' + Number(pt.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      const sev = pt.severity || 'HIGH';
+      const typeLabel = pt.type === 'TRANSFER' ? 'Transfer to ' + (pt.toAccount || '?') : 'Withdrawal';
+
+      return `
+      <div class="pending-card" id="card-${pt.id}">
+        <div class="fraud-badge ${sev}">🚨 ${sev} RISK — Fraud Detected</div>
+
+        <div class="tx-type-label">${typeLabel}</div>
+        <div class="tx-amount">${amtStr}</div>
+
+        <div class="fraud-reason-box">
+          <strong>⚠ Reason flagged:</strong> ${pt.fraudReason || 'Unusual suspicious activity detected'}
+        </div>
+
+        <div class="tx-details">
+          <div class="tx-detail-item">
+            <div class="tx-detail-label">From Account</div>
+            <div class="tx-detail-value">${pt.accountNumber || 'N/A'}</div>
+          </div>
+          ${pt.type === 'TRANSFER' ? `
+          <div class="tx-detail-item">
+            <div class="tx-detail-label">To Account</div>
+            <div class="tx-detail-value">${pt.toAccount || 'N/A'}</div>
+          </div>` : `
+          <div class="tx-detail-item">
+            <div class="tx-detail-label">Type</div>
+            <div class="tx-detail-value">Withdrawal</div>
+          </div>`}
+          <div class="tx-detail-item">
+            <div class="tx-detail-label">Requested At</div>
+            <div class="tx-detail-value">${pt.createdAt ? new Date(pt.createdAt).toLocaleString('en-IN') : '—'}</div>
+          </div>
+          <div class="tx-detail-item">
+            <div class="tx-detail-label">Description</div>
+            <div class="tx-detail-value">${pt.description || '—'}</div>
+          </div>
+        </div>
+
+        <div class="countdown-wrap">
+          <div class="countdown-label">⏱ Auto-cancels in</div>
+          <div class="countdown-timer" id="timer-${pt.id}">05:00</div>
+          <div class="countdown-sub">Transaction will be automatically cancelled for safety if no response</div>
+        </div>
+
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-${pt.id}" style="width:100%"></div>
+        </div>
+
+        <p style="text-align:center; font-size:0.85rem; color:#94a3b8; margin:0 0 1rem;">
+          Did <strong style="color:#f1f5f9;">you</strong> initiate this transaction?
+        </p>
+
+        <div class="action-btns">
+          <button class="btn-confirm" id="confirmBtn-${pt.id}" onclick="confirmTx(${pt.id})">
+            ✅ Yes, I Made This
+          </button>
+          <button class="btn-reject" id="rejectBtn-${pt.id}" onclick="rejectTx(${pt.id})">
+            ❌ No! This Is Fraud
+          </button>
+        </div>
+      </div>`;
+    }
+
+    // ── Per-card countdown timer ──────────────────────────────
+    function startCountdown(pt) {
+      if (timers[pt.id]) clearInterval(timers[pt.id]);
+
+      let secondsLeft = pt.secondsLeft || 300;
+      const totalSeconds = 300;
+
+      function tick() {
+        const timerEl = document.getElementById('timer-' + pt.id);
+        const progressEl = document.getElementById('progress-' + pt.id);
+        if (!timerEl) { clearInterval(timers[pt.id]); return; }
+
+        const m = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+        const s = String(secondsLeft % 60).padStart(2, '0');
+        timerEl.textContent = m + ':' + s;
+
+        const pct = (secondsLeft / totalSeconds) * 100;
+        progressEl.style.width = pct + '%';
+
+        if (secondsLeft <= 60) {
+          timerEl.classList.add('urgent');
+          progressEl.classList.add('urgent');
+        }
+
+        if (secondsLeft <= 0) {
+          clearInterval(timers[pt.id]);
+          timerEl.textContent = 'EXPIRED';
+          timerEl.style.color = '#475569';
+          // Disable buttons
+          const c = document.getElementById('confirmBtn-' + pt.id);
+          const r = document.getElementById('rejectBtn-' + pt.id);
+          if (c) { c.disabled = true; c.textContent = 'Expired'; }
+          if (r) { r.disabled = true; r.textContent = 'Expired'; }
+          return;
+        }
+
+        secondsLeft--;
+      }
+
+      tick();
+      timers[pt.id] = setInterval(tick, 1000);
+    }
+
+    // ── Confirm transaction ───────────────────────────────────
+    async function confirmTx(pendingId) {
+      if (!confirm('Are you sure? This will complete the transaction and deduct money from your account.')) return;
+
+      setCardLoading(pendingId, true);
+      try {
+        const res = await API.call('/pending/confirm', 'POST', { pendingId: pendingId.toString() });
+        clearInterval(timers[pendingId]);
+        showModal('✅', 'Transaction Confirmed', `Your transaction of ₹${getAmount(pendingId)} has been completed successfully.`, 'success');
+        removeCard(pendingId);
+      } catch (e) {
+        setCardLoading(pendingId, false);
+        document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
+      }
+    }
+
+    // ── Reject transaction ────────────────────────────────────
+    async function rejectTx(pendingId) {
+      if (!confirm('Report this as fraud? The transaction will be CANCELLED and your money kept safe.')) return;
+
+      setCardLoading(pendingId, true);
+      try {
+        await API.call('/pending/reject', 'POST', { pendingId: pendingId.toString() });
+        clearInterval(timers[pendingId]);
+        showModal('🛡️', 'Fraud Reported!',
+          `The transaction has been CANCELLED. Your money is safe. Fraud has been logged for investigation.`,
+          'success');
+        removeCard(pendingId);
+      } catch (e) {
+        setCardLoading(pendingId, false);
+        document.getElementById('alertBox').innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
+      }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────
+    function setCardLoading(id, loading) {
+      const c = document.getElementById('confirmBtn-' + id);
+      const r = document.getElementById('rejectBtn-' + id);
+      if (c) { c.disabled = loading; c.innerHTML = loading ? '<span class="loader"></span> Processing...' : '✅ Yes, I Made This'; }
+      if (r) { r.disabled = loading; }
+    }
+
+    function removeCard(id) {
+      pendingData = pendingData.filter(p => p.id !== id);
+      setTimeout(() => { const card = document.getElementById('card-' + id); if (card) card.remove(); if (pendingData.length === 0) renderList(); }, 1500);
+    }
+
+    function getAmount(id) {
+      const pt = pendingData.find(p => p.id === id);
+      return pt ? Number(pt.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '';
+    }
+
+    function showModal(icon, title, body) {
+      document.getElementById('modalIcon').textContent = icon;
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').textContent = body;
+      document.getElementById('resultModal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('resultModal').classList.remove('show');
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+    loadPending();
+    // Refresh list every 30 seconds (in case new pending arrives)
+    setInterval(loadPending, 30000);
+  </script>
+</body>
+
+</html>

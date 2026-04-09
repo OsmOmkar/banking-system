@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fraud Alerts — JavaBank</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>🚨 Fraud Alerts</h1>
+      <p>Real-time fraud detection powered by Java Multithreading</p>
+    </div>
+
+    <!-- How it works banner -->
+    <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);color:white;border-radius:12px;padding:20px;margin-bottom:24px">
+      <h3 style="margin-bottom:8px">🧵 Java Multithreading Fraud Engine</h3>
+      <p style="font-size:.875rem;opacity:.9;line-height:1.6">
+        Every transaction is analysed by a background <code>FraudDetectionThread</code> running
+        concurrently with the main server. It uses <strong>ArrayList</strong> &amp; <strong>HashMap</strong>
+        (Java Collections) to detect: large transactions, rapid transfers, unusual hours,
+        structuring patterns, and IP velocity abuse.
+      </p>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge" style="background:rgba(255,255,255,0.2);color:white">🟣 CRITICAL</span>
+        <span class="badge" style="background:rgba(255,255,255,0.2);color:white">🔴 HIGH</span>
+        <span class="badge" style="background:rgba(255,255,255,0.2);color:white">🟠 MEDIUM</span>
+        <span class="badge" style="background:rgba(255,255,255,0.2);color:white">🟡 LOW</span>
+      </div>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <!-- Account selector + stats -->
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-weight:500;font-size:.9rem">Account:</label>
+        <select id="accountSelect"
+          style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem"
+          onchange="loadAlerts()">
+          <option value="">Loading...</option>
+        </select>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="loadAlerts()">↻ Refresh</button>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid" id="fraudStats" style="margin-bottom:20px">
+      <div class="stat-card red"><div class="label">Total Alerts</div><div class="value" id="totalAlerts">-</div></div>
+      <div class="stat-card orange"><div class="label">Unresolved</div><div class="value" id="unresolvedCount">-</div></div>
+      <div class="stat-card"><div class="label">Critical</div><div class="value" id="criticalCount" style="color:#7c3aed">-</div></div>
+      <div class="stat-card green"><div class="label">Resolved</div><div class="value" id="resolvedCount">-</div></div>
+    </div>
+
+    <!-- Alerts table -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>🚨 Fraud Alert History</span>
+        <span style="font-size:.8rem;color:#6b7280" id="alertSubtitle"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Alert Type</th>
+              <th>Description</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="alertsBody">
+            <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:32px">
+              Select an account to view fraud alerts
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detection rules reference -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">📖 Detection Rules (Java Implementation)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+        <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:1.2rem;margin-bottom:6px">💸</div>
+          <div style="font-weight:600;margin-bottom:4px">Large Transaction</div>
+          <div style="font-size:.8rem;color:#6b7280">Single withdrawal/transfer &gt; ₹50,000. Severity scales with amount.</div>
+          <div style="margin-top:8px"><span class="badge badge-red">HIGH</span></div>
+        </div>
+        <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:1.2rem;margin-bottom:6px">⚡</div>
+          <div style="font-weight:600;margin-bottom:4px">Rapid Transactions</div>
+          <div style="font-size:.8rem;color:#6b7280">5+ transactions within 10 minutes. Uses ArrayList + time window check.</div>
+          <div style="margin-top:8px"><span class="badge badge-red">HIGH</span></div>
+        </div>
+        <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:1.2rem;margin-bottom:6px">🌙</div>
+          <div style="font-weight:600;margin-bottom:4px">Unusual Hour</div>
+          <div style="font-size:.8rem;color:#6b7280">Any transaction between 12AM–4AM flagged as suspicious.</div>
+          <div style="margin-top:8px"><span class="badge badge-yellow">LOW</span></div>
+        </div>
+        <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:1.2rem;margin-bottom:6px">🔄</div>
+          <div style="font-weight:600;margin-bottom:4px">Structuring</div>
+          <div style="font-size:.8rem;color:#6b7280">3+ round-number (₹1000 multiples) transactions. Detected via HashMap frequency count.</div>
+          <div style="margin-top:8px"><span class="badge badge-yellow">MEDIUM</span></div>
+        </div>
+        <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:1.2rem;margin-bottom:6px">🌐</div>
+          <div style="font-weight:600;margin-bottom:4px">IP Velocity</div>
+          <div style="font-size:.8rem;color:#6b7280">10+ transactions from same IP in 10 minutes. HashMap&lt;String, List&lt;Long&gt;&gt; tracks timestamps.</div>
+          <div style="margin-top:8px"><span class="badge badge-yellow">MEDIUM</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+Auth.requireAuth();
+renderSidebar("fraud");
+
+async function init() {
+    const accounts = await API.call("/accounts");
+    const sel = document.getElementById("accountSelect");
+    sel.innerHTML = accounts.map(a =>
+        `<option value="${a.id}">${a.accountType} — ${a.accountNumber}</option>`).join("");
+
+    // Check URL param
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("accountId")) sel.value = params.get("accountId");
+
+    if (accounts.length > 0) loadAlerts();
+}
+
+async function loadAlerts() {
+    const accountId = document.getElementById("accountSelect").value;
+    if (!accountId) return;
+
+    const tbody = document.getElementById("alertsBody");
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px">
+      <span class="loader" style="border-color:rgba(0,0,0,.2);border-top-color:var(--primary)"></span>
+    </td></tr>`;
+
+    try {
+        const alerts = await API.call(`/fraud/alerts?accountId=${accountId}`);
+
+        // Update stats
+        document.getElementById("totalAlerts").textContent = alerts.length;
+        document.getElementById("unresolvedCount").textContent = alerts.filter(a => !a.resolved).length;
+        document.getElementById("criticalCount").textContent  = alerts.filter(a => a.severity === "CRITICAL").length;
+        document.getElementById("resolvedCount").textContent  = alerts.filter(a => a.resolved).length;
+        document.getElementById("alertSubtitle").textContent  = `${alerts.length} alert(s) found`;
+
+        if (alerts.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6">
+              <div class="empty-state">
+                <div class="icon">✅</div>
+                <p>No fraud alerts for this account. All clear!</p>
+              </div>
+            </td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = alerts.map(alert => `<tr>
+          <td style="font-size:.8rem">${fmtDate(alert.date)}</td>
+          <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">
+            ${alert.alertType}
+          </code></td>
+          <td style="max-width:280px;font-size:.85rem">${alert.description}</td>
+          <td><span class="badge ${sevBadge(alert.severity)} sev-${alert.severity}">
+            ${sevIcon(alert.severity)} ${alert.severity}
+          </span></td>
+          <td>${alert.resolved
+            ? '<span class="badge badge-green">✓ Resolved</span>'
+            : '<span class="badge badge-red">⚡ Active</span>'}</td>
+          <td>${!alert.resolved
+            ? `<button class="btn btn-outline btn-sm" onclick="resolve(${alert.id})">
+                 ✓ Resolve
+               </button>`
+            : '<span style="color:#9ca3af;font-size:.8rem">—</span>'}</td>
+        </tr>`).join("");
+
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center">${e.message}</td></tr>`;
+    }
+}
+
+async function resolve(alertId) {
+    try {
+        await API.call("/fraud/resolve", "PUT", { alertId });
+        document.getElementById("alertBox").innerHTML =
+          `<div class="alert alert-success">✅ Alert #${alertId} marked as resolved</div>`;
+        setTimeout(() => document.getElementById("alertBox").innerHTML = "", 3000);
+        loadAlerts();
+    } catch(e) {
+        document.getElementById("alertBox").innerHTML =
+          `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function sevBadge(sev) {
+    return { LOW:"badge-gray", MEDIUM:"badge-yellow", HIGH:"badge-red",
+             CRITICAL:"badge-red" }[sev] || "badge-gray";
+}
+
+function sevIcon(sev) {
+    return { LOW:"🟡", MEDIUM:"🟠", HIGH:"🔴", CRITICAL:"🟣" }[sev] || "";
+}
+
+init();
+</script>
+</body>
+</html>

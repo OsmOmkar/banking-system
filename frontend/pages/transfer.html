@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transfer — JavaBank</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Transfer Money 🔄</h1>
+      <p>Send money to any JavaBank account instantly</p>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- Transfer form -->
+      <div class="card">
+        <div class="card-title">🔄 New Transfer</div>
+
+        <div class="form-group">
+          <label>From Account</label>
+          <select id="fromAccount">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+
+        <div id="balBox" style="display:none;padding:12px;background:#f0f9ff;border-radius:8px;margin-bottom:16px">
+          <div style="font-size:.78rem;color:#6b7280">Available Balance</div>
+          <div style="font-size:1.3rem;font-weight:700;color:var(--primary)" id="fromBal">-</div>
+        </div>
+
+        <div class="form-group">
+          <label>To Account Number</label>
+          <input type="text" id="toAccount" placeholder="e.g. ACC002234567">
+        </div>
+
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input type="number" id="transferAmt" placeholder="Enter amount" min="1">
+        </div>
+
+        <div class="form-group">
+          <label>Description / Remarks</label>
+          <input type="text" id="transferDesc" placeholder="e.g. Rent, Loan repayment">
+        </div>
+
+        <!-- Fraud notice -->
+        <div class="alert alert-warning" style="margin-bottom:16px">
+          ⚠️ Transfers above ₹50,000 are flagged for fraud review by our AI engine.
+        </div>
+
+        <button class="btn btn-primary btn-full" id="transferBtn" onclick="doTransfer()">
+          🔄 Transfer Now
+        </button>
+      </div>
+
+      <!-- Info panel -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">ℹ️ Transfer Info</div>
+          <div style="font-size:.875rem;color:#4b5563;line-height:1.8">
+            <p>• Transfers are <strong>instant</strong> between JavaBank accounts</p>
+            <p>• Our <strong>AI fraud engine</strong> scans every transfer in real-time</p>
+            <p>• Suspicious transfers are flagged automatically</p>
+            <p>• Large transfers (₹50,000+) go under review</p>
+            <p>• You can view alerts under <strong>Fraud Alerts</strong></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🚨 Fraud Detection Rules</div>
+          <div style="font-size:.8rem;line-height:2">
+            <div>🔴 <strong>Large Transaction</strong> — Single transfer > ₹50,000</div>
+            <div>🟠 <strong>Rapid Transfers</strong> — 5+ transactions in 10 mins</div>
+            <div>🟡 <strong>Unusual Hours</strong> — Activity at 12AM–4AM</div>
+            <div>🔵 <strong>Structuring</strong> — Repeated round-number amounts</div>
+            <div>🔵 <strong>IP Velocity</strong> — Many requests from one IP</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent transfers table -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">📋 Recent Transfers</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>From Account</th><th>To Account</th>
+                <th>Amount</th><th>Status</th></tr>
+          </thead>
+          <tbody id="transferHistory">
+            <tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:24px">
+              Select an account to view transfer history
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+Auth.requireAuth();
+renderSidebar("transfer");
+
+let accounts = [];
+
+async function init() {
+    accounts = await API.call("/accounts");
+    const sel = document.getElementById("fromAccount");
+    sel.innerHTML = accounts.map(a =>
+        `<option value="${a.id}" data-balance="${a.balance}" data-num="${a.accountNumber}">
+          ${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})
+        </option>`).join("");
+    if (accounts.length > 0) {
+        updateBalance();
+        loadHistory();
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("fromAccount").addEventListener("change", () => {
+        updateBalance();
+        loadHistory();
+    });
+});
+
+function updateBalance() {
+    const sel = document.getElementById("fromAccount");
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+        document.getElementById("fromBal").textContent = fmt(opt.dataset.balance);
+        document.getElementById("balBox").style.display = "";
+    }
+}
+
+async function loadHistory() {
+    const accountId = document.getElementById("fromAccount").value;
+    if (!accountId) return;
+    try {
+        const txList = await API.call(`/transactions?accountId=${accountId}`);
+        const transfers = txList.filter(t => t.type === "TRANSFER");
+        const tbody = document.getElementById("transferHistory");
+
+        if (transfers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:24px">No transfers yet</td></tr>`;
+            return;
+        }
+
+        const sel = document.getElementById("fromAccount");
+        const fromNum = sel.options[sel.selectedIndex]?.dataset?.num || "-";
+
+        tbody.innerHTML = transfers.map(tx => `<tr>
+          <td style="font-size:.8rem">${fmtDate(tx.date)}</td>
+          <td>${fromNum}</td>
+          <td>${tx.recipient || "-"}</td>
+          <td class="amount-debit">-${fmt(tx.amount)}</td>
+          <td>${tx.flagged
+            ? '<span class="badge badge-red">⚠️ Flagged</span>'
+            : '<span class="badge badge-green">✓ Completed</span>'}</td>
+        </tr>`).join("");
+    } catch(e) {}
+}
+
+async function doTransfer() {
+    const fromAccountId = parseInt(document.getElementById("fromAccount").value);
+    const toAccountNumber = document.getElementById("toAccount").value.trim();
+    const amount = parseFloat(document.getElementById("transferAmt").value);
+    const description = document.getElementById("transferDesc").value || "Transfer";
+
+    if (!fromAccountId) { showAlert("Select a source account", "warning"); return; }
+    if (!toAccountNumber) { showAlert("Enter recipient account number", "warning"); return; }
+    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+
+    const btn = document.getElementById("transferBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Processing...';
+
+    try {
+        const tx = await API.call("/transfer", "POST",
+            { fromAccountId, toAccountNumber, amount, description });
+
+        const msg = tx.flagged
+            ? `✅ Transfer of ${fmt(amount)} completed — ⚠️ flagged for fraud review`
+            : `✅ Transfer of ${fmt(amount)} to ${toAccountNumber} completed!`;
+        showAlert(msg, tx.flagged ? "warning" : "success");
+
+        document.getElementById("toAccount").value = "";
+        document.getElementById("transferAmt").value = "";
+        document.getElementById("transferDesc").value = "";
+        await init();
+        await loadHistory();
+    } catch(e) {
+        showAlert(e.message, "error");
+    } finally {
+        btn.disabled = false; btn.innerHTML = "🔄 Transfer Now";
+    }
+}
+
+function showAlert(msg, type = "success") {
+    document.getElementById("alertBox").innerHTML =
+        `<div class="alert alert-${type}">${msg}</div>`;
+    if (type === "success") {
+        setTimeout(() => document.getElementById("alertBox").innerHTML = "", 5000);
+    }
+}
+
+init();
+</script>
+</body>
+</html>

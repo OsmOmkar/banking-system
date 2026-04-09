@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaBank — Secure Banking</title>
+  <meta name="description" content="JavaBank — Secure, modern banking portal with OTP email verification and real-time fraud protection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ─── Auth Page Overrides ─────────────────────────────── */
+    body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; }
+
+    .auth-wrap { width: 100%; max-width: 480px; padding: 1rem; }
+
+    .auth-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 2.5rem 2.5rem;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+    }
+
+    .logo { text-align: center; margin-bottom: 2rem; }
+    .logo h1 {
+      font-size: 2rem; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #60a5fa, #818cf8);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+    .logo p { color: #64748b; font-size: 0.85rem; margin-top: 4px; }
+    .logo .shield { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
+
+    .tabs { display: flex; gap: 0.4rem; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 4px; margin-bottom: 1.8rem; }
+    .tab { flex: 1; padding: 0.5rem; border: none; background: transparent; color: #94a3b8; border-radius: 7px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .tab.active { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.35); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; letter-spacing: 0.03em; text-transform: uppercase; }
+    .form-group input {
+      width: 100%; padding: 0.7rem 0.9rem; background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+      color: #f1f5f9; font-size: 0.9rem; font-family: 'Inter', sans-serif;
+      transition: all 0.2s; box-sizing: border-box;
+    }
+    .form-group input:focus { outline: none; border-color: #3b82f6; background: rgba(59,130,246,0.08); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .form-group input.error { border-color: #ef4444; }
+    .form-group input.success { border-color: #22c55e; }
+    .field-error { font-size: 0.75rem; color: #f87171; margin-top: 4px; display: none; }
+    .field-error.show { display: block; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    .btn { width: 100%; padding: 0.8rem; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+    .btn-primary { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; box-shadow: 0 4px 15px rgba(59,130,246,0.35); }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.45); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-outline { background: transparent; color: #60a5fa; border: 1px solid rgba(96,165,250,0.4); margin-top: 0.5rem; }
+    .btn-outline:hover:not(:disabled) { background: rgba(59,130,246,0.08); }
+    .btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .alert { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem; }
+    .alert-error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .alert-info { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+    .loader { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* OTP input box */
+    .otp-section { text-align: center; }
+    .otp-row { display: flex; gap: 8px; justify-content: center; margin: 1rem 0; }
+    .otp-digit {
+      width: 46px; height: 52px; text-align: center; font-size: 1.3rem; font-weight: 700;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; color: #f1f5f9; font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+    .otp-digit:focus { outline: none; border-color: #3b82f6; background: rgba(59,130,246,0.1); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .otp-digit.filled { border-color: #6366f1; }
+    .otp-timer { font-size: 0.8rem; color: #64748b; }
+    .otp-timer span { color: #f59e0b; font-weight: 600; }
+    .otp-email-show { font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; }
+    .otp-email-show strong { color: #60a5fa; }
+
+    /* Password strength */
+    .pwd-strength { margin-top: 6px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden; }
+    .pwd-strength-bar { height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s; width: 0%; }
+
+    /* Step indicators */
+    .steps { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 1.5rem; }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #64748b; transition: all 0.3s; }
+    .step-dot.active { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); }
+    .step-dot.done { border-color: #22c55e; color: white; background: #22c55e; }
+    .step-label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .step-label.active { color: #60a5fa; }
+    .step-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); margin-bottom: 16px; }
+    .step-line.done { background: #22c55e; }
+
+    .demo-hint { text-align: center; margin-top: 1rem; font-size: 0.78rem; color: #475569; }
+    .demo-hint strong { color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="logo">
+      <span class="shield">🏦</span>
+      <h1>JavaBank</h1>
+      <p>Secure · Smart · Protected</p>
+    </div>
+
+    <div class="tabs" id="authTabs">
+      <button class="tab active" onclick="switchTab('login')" id="tabLogin">Login</button>
+      <button class="tab"        onclick="switchTab('register')" id="tabReg">Register</button>
+    </div>
+
+    <!-- ═══════════════ LOGIN ═══════════════ -->
+    <div class="tab-pane active" id="loginPane">
+      <div id="loginAlert"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUsername" placeholder="Enter username" value="demo">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter password" value="password123">
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Login</button>
+      <p class="demo-hint">Demo: username <strong>demo</strong> / password <strong>password123</strong></p>
+    </div>
+
+    <!-- ═══════════════ REGISTER (3-step flow) ═══════════════ -->
+    <div class="tab-pane" id="registerPane">
+      <!-- Step indicator -->
+      <div class="steps" id="regSteps">
+        <div class="step">
+          <div class="step-dot active" id="dot1">1</div>
+          <div class="step-label active" id="lbl1">Details</div>
+        </div>
+        <div class="step-line" id="line1"></div>
+        <div class="step">
+          <div class="step-dot" id="dot2">2</div>
+          <div class="step-label" id="lbl2">Verify Email</div>
+        </div>
+        <div class="step-line" id="line2"></div>
+        <div class="step">
+          <div class="step-dot" id="dot3">3</div>
+          <div class="step-label" id="lbl3">Done</div>
+        </div>
+      </div>
+
+      <div id="regAlert"></div>
+
+      <!-- STEP 1: Fill in details -->
+      <div id="regStep1">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="regName" placeholder="e.g. Omkar Bhagat" oninput="validateNameField()">
+            <div class="field-error" id="nameErr"></div>
+          </div>
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="regUsername" placeholder="Choose username" oninput="validateUsernameField()">
+            <div class="field-error" id="usernameErr"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="regEmail" placeholder="your@email.com" oninput="validateEmailField()">
+            <div class="field-error" id="emailErr"></div>
+          </div>
+          <div class="form-group">
+            <label>Phone (10-digit)</label>
+            <input type="tel" id="regPhone" placeholder="9876543210" oninput="validatePhoneField()">
+            <div class="field-error" id="phoneErr"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="regPassword" placeholder="Min 8 chars" oninput="updatePasswordStrength()">
+            <div class="pwd-strength"><div class="pwd-strength-bar" id="pwdBar"></div></div>
+            <div class="field-error" id="passwordErr"></div>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="regConfirm" placeholder="Re-enter password">
+            <div class="field-error" id="confirmErr"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="regStep1Btn" onclick="goToStep2()">Send OTP to Email →</button>
+      </div>
+
+      <!-- STEP 2: Email OTP verification -->
+      <div id="regStep2" style="display:none;">
+        <div class="otp-section">
+          <div class="otp-email-show">OTP sent to <strong id="otpEmailShow"></strong></div>
+          <p style="color:#94a3b8; font-size:0.85rem; margin:0 0 1rem;">
+            Enter the 6-digit OTP from your email / server console.
+          </p>
+          <div class="otp-row">
+            <input class="otp-digit" id="d1" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,null,'d2')">
+            <input class="otp-digit" id="d2" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d1','d3')">
+            <input class="otp-digit" id="d3" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d2','d4')">
+            <input class="otp-digit" id="d4" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d3','d5')">
+            <input class="otp-digit" id="d5" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d4','d6')">
+            <input class="otp-digit" id="d6" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d5',null)">
+          </div>
+          <div class="otp-timer">OTP expires in <span id="otpCountdown">10:00</span></div>
+          <button class="btn btn-primary" id="verifyOtpBtn" onclick="verifyOTP()" style="margin-top:1rem;">Verify OTP</button>
+          <button class="btn btn-outline" id="resendOtpBtn" onclick="resendOTP()" disabled>Resend OTP</button>
+          <button class="btn btn-outline" onclick="goBackToStep1()" style="margin-top:0.5rem;">← Back</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Creating account spinner -->
+      <div id="regStep3" style="display:none; text-align:center; padding:1rem 0;">
+        <div style="font-size:3rem; margin-bottom:1rem;">✅</div>
+        <h3 style="color:#86efac; margin:0 0 0.5rem;">Email Verified!</h3>
+        <p style="color:#94a3b8; font-size:0.9rem;">Creating your account...</p>
+        <div class="loader" style="display:inline-block; margin-top:1rem;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script>
+  // Redirect if already logged in
+  if (Auth.isLoggedIn()) window.location.href = '/pages/dashboard.html';
+
+  let otpTimerInterval = null;
+  let otpSecondsLeft = 600; // 10 minutes
+
+  // ─── Tab Switch ──────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabReg').classList.toggle('active', tab === 'register');
+    document.getElementById('loginPane').classList.toggle('active', tab === 'login');
+    document.getElementById('registerPane').classList.toggle('active', tab === 'register');
+  }
+
+  function showAlert(id, msg, type = 'error') {
+    document.getElementById(id).innerHTML =
+      `<div class="alert alert-${type}">${msg}</div>`;
+  }
+
+  // ─── Login ───────────────────────────────────────────────
+  async function doLogin() {
+    const btn = document.getElementById('loginBtn');
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!username || !password) { showAlert('loginAlert', 'Fill all fields'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Logging in...';
+
+    try {
+      const data = await API.call('/auth/login', 'POST', { username, password });
+      Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName, email: data.email });
+      window.location.href = '/pages/dashboard.html';
+    } catch (e) {
+      showAlert('loginAlert', e.message);
+      btn.disabled = false;
+      btn.innerHTML = 'Login';
+    }
+  }
+
+  // ─── Real-time Validation ────────────────────────────────
+  function setFieldError(fieldId, errId, error) {
+    const input = document.getElementById(fieldId);
+    const err   = document.getElementById(errId);
+    if (error) {
+      input.classList.add('error'); input.classList.remove('success');
+      err.textContent = error; err.classList.add('show');
+    } else {
+      input.classList.remove('error'); input.classList.add('success');
+      err.classList.remove('show');
+    }
+  }
+
+  function validateNameField() {
+    const val = document.getElementById('regName').value.trim();
+    const fakeWords = ['test','abcd','xyz','qwerty','asdf','dummy','fake','user','admin','null','hello','foo','bar','temp','sample','random','demo','abc'];
+    let err = null;
+    if (!val) err = 'Full name is required';
+    else if (val.length < 3) err = 'Name too short';
+    else if (!/^[A-Za-z][a-zA-Z'\- ]{1,}$/.test(val)) err = 'Name can only contain letters, spaces, hyphens';
+    else if (!val.includes(' ')) err = 'Enter first and last name';
+    else if (fakeWords.some(w => val.toLowerCase().includes(w))) err = 'Please enter your real name';
+    else if (!/^[A-Z]/.test(val)) err = 'Name must start with a capital letter';
+    setFieldError('regName', 'nameErr', err);
+  }
+
+  function validateUsernameField() {
+    const val = document.getElementById('regUsername').value.trim();
+    let err = null;
+    if (!val) err = 'Username is required';
+    else if (val.length < 4 || val.length > 30) err = 'Must be 4–30 characters';
+    else if (!/^[a-zA-Z0-9_]+$/.test(val)) err = 'Only letters, numbers, underscores';
+    setFieldError('regUsername', 'usernameErr', err);
+  }
+
+  function validateEmailField() {
+    const val = document.getElementById('regEmail').value.trim();
+    let err = null;
+    if (!val) err = 'Email is required';
+    else if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(val)) err = 'Enter a valid email address';
+    setFieldError('regEmail', 'emailErr', err);
+  }
+
+  function validatePhoneField() {
+    const val = document.getElementById('regPhone').value.trim().replace(/[\s\-]/g, '');
+    let err = null;
+    if (val && !/^[6-9][0-9]{9}$/.test(val)) err = 'Enter a valid 10-digit Indian mobile number';
+    setFieldError('regPhone', 'phoneErr', err);
+  }
+
+  function updatePasswordStrength() {
+    const pwd = document.getElementById('regPassword').value;
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[a-z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+
+    const bar = document.getElementById('pwdBar');
+    const colors = ['#ef4444','#f97316','#f59e0b','#84cc16','#22c55e'];
+    const widths = ['20%','40%','60%','80%','100%'];
+    bar.style.width  = score ? widths[score-1] : '0%';
+    bar.style.background = score ? colors[score-1] : 'transparent';
+
+    let err = null;
+    if (pwd && pwd.length < 8) err = 'At least 8 characters';
+    else if (pwd && !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(pwd)) err = 'Add uppercase, lowercase, and a number';
+    setFieldError('regPassword', 'passwordErr', err);
+  }
+
+  // ─── Step 1 → Step 2 (validate then send OTP) ───────────
+  async function goToStep2() {
+    // Trigger all validations
+    validateNameField(); validateUsernameField(); validateEmailField();
+    validatePhoneField(); updatePasswordStrength();
+
+    const anyError = document.querySelectorAll('.field-error.show');
+    if (anyError.length > 0) { showAlert('regAlert', 'Please fix the errors above.'); return; }
+
+    const password = document.getElementById('regPassword').value;
+    const confirm  = document.getElementById('regConfirm').value;
+    if (!password || !confirm) { showAlert('regAlert', 'Please fill all fields.'); return; }
+    if (password !== confirm) {
+      document.getElementById('regConfirm').classList.add('error');
+      showAlert('regAlert', 'Passwords do not match.'); return;
+    }
+
+    const email    = document.getElementById('regEmail').value.trim();
+    const fullName = document.getElementById('regName').value.trim();
+
+    const btn = document.getElementById('regStep1Btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Sending OTP...';
+    document.getElementById('regAlert').innerHTML = '';
+
+    try {
+      await API.call('/auth/send-otp', 'POST', { email, fullName });
+      document.getElementById('otpEmailShow').textContent = email;
+      showStep(2);
+      startOtpTimer();
+      showAlert('regAlert', '✅ OTP sent to ' + email + '! Check your email (or server console for demo).', 'success');
+    } catch (e) {
+      showAlert('regAlert', e.message);
+      btn.disabled = false;
+      btn.innerHTML = 'Send OTP to Email →';
+    }
+  }
+
+  // ─── OTP digit handling ──────────────────────────────────
+  function otpInput(el, prevId, nextId) {
+    el.value = el.value.replace(/[^0-9]/g, '');
+    if (el.value) {
+      el.classList.add('filled');
+      if (nextId) document.getElementById(nextId).focus();
+    } else {
+      el.classList.remove('filled');
+    }
+  }
+
+  function getOtpValue() {
+    return ['d1','d2','d3','d4','d5','d6'].map(id => document.getElementById(id).value).join('');
+  }
+
+  // ─── Verify OTP ──────────────────────────────────────────
+  async function verifyOTP() {
+    const otp = getOtpValue();
+    if (otp.length !== 6) { showAlert('regAlert', 'Enter all 6 digits.'); return; }
+
+    const email = document.getElementById('regEmail').value.trim();
+    const btn   = document.getElementById('verifyOtpBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Verifying...';
+
+    try {
+      await API.call('/auth/verify-otp', 'POST', { email, otp });
+      // Email verified — now register
+      clearInterval(otpTimerInterval);
+      showStep(3);
+      await doRegister();
+    } catch (e) {
+      showAlert('regAlert', '❌ ' + e.message);
+      btn.disabled = false;
+      btn.innerHTML = 'Verify OTP';
+    }
+  }
+
+  // ─── Actual registration (after OTP verified) ────────────
+  async function doRegister() {
+    try {
+      const data = await API.call('/auth/register', 'POST', {
+        fullName:  document.getElementById('regName').value.trim(),
+        username:  document.getElementById('regUsername').value.trim(),
+        email:     document.getElementById('regEmail').value.trim(),
+        phone:     document.getElementById('regPhone').value.trim(),
+        password:  document.getElementById('regPassword').value,
+        otpToken:  'verified'  // tells server we completed OTP
+      });
+      Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
+      window.location.href = '/pages/dashboard.html';
+    } catch (e) {
+      showAlert('regAlert', '❌ Registration failed: ' + e.message);
+      showStep(1);
+    }
+  }
+
+  // ─── Resend OTP ──────────────────────────────────────────
+  async function resendOTP() {
+    const email    = document.getElementById('regEmail').value.trim();
+    const fullName = document.getElementById('regName').value.trim();
+    try {
+      await API.call('/auth/send-otp', 'POST', { email, fullName });
+      showAlert('regAlert', '✅ New OTP sent!', 'success');
+      otpSecondsLeft = 600;
+      startOtpTimer();
+      document.getElementById('resendOtpBtn').disabled = true;
+      ['d1','d2','d3','d4','d5','d6'].forEach(id => { const el = document.getElementById(id); el.value = ''; el.classList.remove('filled'); });
+      document.getElementById('d1').focus();
+    } catch (e) {
+      showAlert('regAlert', e.message);
+    }
+  }
+
+  // ─── OTP Countdown Timer ─────────────────────────────────
+  function startOtpTimer() {
+    clearInterval(otpTimerInterval);
+    otpSecondsLeft = 600;
+    otpTimerInterval = setInterval(() => {
+      otpSecondsLeft--;
+      const m = String(Math.floor(otpSecondsLeft / 60)).padStart(2, '0');
+      const s = String(otpSecondsLeft % 60).padStart(2, '0');
+      document.getElementById('otpCountdown').textContent = m + ':' + s;
+
+      if (otpSecondsLeft <= 60) {
+        document.getElementById('resendOtpBtn').disabled = false;
+      }
+      if (otpSecondsLeft <= 0) {
+        clearInterval(otpTimerInterval);
+        showAlert('regAlert', '⏰ OTP expired. Please resend.');
+      }
+    }, 1000);
+  }
+
+  // ─── Step navigation ─────────────────────────────────────
+  function showStep(n) {
+    document.getElementById('regStep1').style.display = n === 1 ? 'block' : 'none';
+    document.getElementById('regStep2').style.display = n === 2 ? 'block' : 'none';
+    document.getElementById('regStep3').style.display = n === 3 ? 'block' : 'none';
+
+    // Update step dots
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById('dot' + i);
+      const lbl = document.getElementById('lbl' + i);
+      dot.classList.remove('active','done');
+      lbl.classList.remove('active');
+      if (i < n) { dot.classList.add('done'); dot.textContent = '✓'; }
+      else if (i === n) { dot.classList.add('active'); dot.textContent = i; lbl.classList.add('active'); }
+      else { dot.textContent = i; }
+    }
+    for (let i = 1; i <= 2; i++) {
+      const line = document.getElementById('line' + i);
+      line.classList.toggle('done', i < n);
+    }
+
+    document.getElementById('regAlert').innerHTML = '';
+  }
+
+  function goBackToStep1() {
+    clearInterval(otpTimerInterval);
+    showStep(1);
+    const btn = document.getElementById('regStep1Btn');
+    btn.disabled = false;
+    btn.innerHTML = 'Send OTP to Email →';
+  }
+
+  // ─── Enter key support ───────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (document.getElementById('loginPane').classList.contains('active')) doLogin();
+    }
+  });
+</script>
+</body>
+</html>

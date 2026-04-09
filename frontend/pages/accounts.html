@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accounts — JavaBank</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+
+  <main class="main-content">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <h1>My Accounts 💳</h1>
+        <p>Manage your savings and current accounts</p>
+      </div>
+      <button class="btn btn-primary" onclick="openNewAccModal()">+ New Account</button>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <!-- Accounts grid -->
+    <div class="accounts-grid" id="accountsGrid">
+      <div style="color:#9ca3af;padding:20px">Loading...</div>
+    </div>
+
+    <!-- Account detail card -->
+    <div class="card" id="detailCard" style="display:none">
+      <div class="card-title" style="justify-content:space-between">
+        <span id="detailTitle">Account Details</span>
+        <button class="btn btn-outline btn-sm" onclick="hideDetail()">✕ Close</button>
+      </div>
+      <div id="detailContent"></div>
+    </div>
+
+    <!-- Quick actions card -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">⚡ Quick Actions</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="window.location.href='transactions.html'">
+          💰 Deposit / Withdraw
+        </button>
+        <button class="btn btn-primary" onclick="window.location.href='transfer.html'">
+          🔄 Transfer Money
+        </button>
+        <button class="btn btn-outline" onclick="window.location.href='fraud.html'">
+          🚨 View Fraud Alerts
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- New Account Modal -->
+<div class="modal-overlay" id="newAccModal">
+  <div class="modal">
+    <div class="modal-title">
+      Open New Account
+      <button class="modal-close" onclick="closeNewAccModal()">✕</button>
+    </div>
+    <div id="modalAlert"></div>
+    <div class="form-group">
+      <label>Account Type</label>
+      <select id="accType">
+        <option value="SAVINGS">Savings Account (4.5% interest)</option>
+        <option value="CURRENT">Current Account (₹10,000 overdraft)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Initial Deposit (₹)</label>
+      <input type="number" id="initialDeposit" placeholder="0" min="0">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary btn-full" id="createAccBtn" onclick="createAccount()">
+        Open Account
+      </button>
+      <button class="btn btn-outline" onclick="closeNewAccModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+Auth.requireAuth();
+renderSidebar("accounts");
+
+async function loadAccounts() {
+    try {
+        const accounts = await API.call("/accounts");
+        const grid = document.getElementById("accountsGrid");
+
+        if (accounts.length === 0) {
+            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+              <div class="icon">💳</div>
+              <p>No accounts yet. Create your first account!</p>
+            </div>`;
+            return;
+        }
+
+        grid.innerHTML = accounts.map(a => `
+          <div class="account-card ${a.accountType === 'CURRENT' ? 'current' : ''}"
+               onclick="showDetail(${JSON.stringify(a).replace(/"/g,'&quot;')})">
+            <div class="acc-type">${a.accountType} Account</div>
+            <div class="acc-bal">${fmt(a.balance)}</div>
+            <div class="acc-num">${a.accountNumber}</div>
+            <div class="acc-sub">
+              ${a.accountType === 'SAVINGS'
+                ? `Monthly Interest: ${fmt(a.interest)}`
+                : `Overdraft Available: ${fmt(a.overdraftLimit)}`}
+            </div>
+          </div>`).join("");
+    } catch(e) {
+        document.getElementById("alertBox").innerHTML =
+          `<div class="alert alert-error">Failed to load accounts: ${e.message}</div>`;
+    }
+}
+
+function showDetail(acc) {
+    document.getElementById("detailCard").style.display = "";
+    document.getElementById("detailTitle").textContent =
+      `${acc.accountType} Account — ${acc.accountNumber}`;
+    document.getElementById("detailContent").innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:.8rem;color:#6b7280">Account Number</div>
+          <div style="font-weight:600;margin-top:4px">${acc.accountNumber}</div>
+        </div>
+        <div>
+          <div style="font-size:.8rem;color:#6b7280">Account Type</div>
+          <div style="font-weight:600;margin-top:4px">${acc.accountType}</div>
+        </div>
+        <div>
+          <div style="font-size:.8rem;color:#6b7280">Current Balance</div>
+          <div style="font-weight:700;font-size:1.3rem;color:var(--primary);margin-top:4px">${fmt(acc.balance)}</div>
+        </div>
+        <div>
+          <div style="font-size:.8rem;color:#6b7280">${acc.accountType === 'SAVINGS' ? 'Monthly Interest Earned' : 'Overdraft Limit'}</div>
+          <div style="font-weight:600;margin-top:4px;color:var(--success)">
+            ${acc.accountType === 'SAVINGS' ? fmt(acc.interest) : fmt(acc.overdraftLimit)}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn btn-primary btn-sm"
+          onclick="window.location.href='transactions.html?accountId=${acc.id}'">
+          View Transactions
+        </button>
+        <button class="btn btn-outline btn-sm"
+          onclick="window.location.href='fraud.html?accountId=${acc.id}'">
+          Fraud Alerts
+        </button>
+      </div>`;
+    document.getElementById("detailCard").scrollIntoView({ behavior: "smooth" });
+}
+
+function hideDetail() {
+    document.getElementById("detailCard").style.display = "none";
+}
+
+function openNewAccModal() {
+    document.getElementById("newAccModal").classList.add("open");
+}
+
+function closeNewAccModal() {
+    document.getElementById("newAccModal").classList.remove("open");
+    document.getElementById("modalAlert").innerHTML = "";
+}
+
+async function createAccount() {
+    const btn  = document.getElementById("createAccBtn");
+    const type = document.getElementById("accType").value;
+    const init = parseFloat(document.getElementById("initialDeposit").value || 0);
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Creating...';
+
+    try {
+        await API.call("/accounts", "POST", { type, initialDeposit: init });
+        closeNewAccModal();
+        await loadAccounts();
+        document.getElementById("alertBox").innerHTML =
+          `<div class="alert alert-success">✅ Account created successfully!</div>`;
+        setTimeout(() => document.getElementById("alertBox").innerHTML = "", 3000);
+    } catch(e) {
+        document.getElementById("modalAlert").innerHTML =
+          `<div class="alert alert-error">${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Open Account";
+    }
+}
+
+loadAccounts();
+</script>
+</body>
+</html>

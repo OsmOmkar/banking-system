@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaBank — Login</title>
+  <link rel="stylesheet" href="frontend/css/style.css">
+  <style>
+    .tabs { justify-content: center; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="logo">
+      <h1>🏦 JavaBank</h1>
+      <p>Pure Java Banking System</p>
+    </div>
+
+    <div class="tabs" id="authTabs">
+      <button class="tab active" onclick="switchTab('login')">Login</button>
+      <button class="tab"        onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="tab-pane active" id="loginPane">
+      <div id="loginAlert"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUsername" placeholder="Enter username" value="demo">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter password" value="password123">
+      </div>
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">
+        Login
+      </button>
+      <p style="text-align:center; margin-top:12px; font-size:.8rem; color:#6b7280;">
+        Demo: username <strong>demo</strong> / password <strong>password123</strong>
+      </p>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="tab-pane" id="registerPane">
+      <div id="regAlert"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="regName" placeholder="Your full name">
+        </div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="regUsername" placeholder="Choose username">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="regEmail" placeholder="Email address">
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" id="regPhone" placeholder="Phone number">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="regPassword" placeholder="Password">
+        </div>
+        <div class="form-group">
+          <label>Confirm</label>
+          <input type="password" id="regConfirm" placeholder="Confirm password">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="regBtn" onclick="doRegister()">
+        Create Account
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="frontend/js/config.js"></script>
+<script>
+  // Redirect if already logged in
+  if (Auth.isLoggedIn()) window.location.href = "frontend/pages/dashboard.html";
+
+  function switchTab(tab) {
+    document.querySelectorAll(".tab").forEach((t, i) =>
+      t.classList.toggle("active", (i === 0) === (tab === "login")));
+    document.getElementById("loginPane").classList.toggle("active", tab === "login");
+    document.getElementById("registerPane").classList.toggle("active", tab === "register");
+  }
+
+  function showAlert(id, msg, type = "error") {
+    document.getElementById(id).innerHTML =
+      `<div class="alert alert-${type}">⚠️ ${msg}</div>`;
+  }
+
+  async function doLogin() {
+    const btn = document.getElementById("loginBtn");
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    if (!username || !password) { showAlert("loginAlert", "Fill all fields"); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Logging in...';
+
+    try {
+      const data = await API.call("/auth/login", "POST", { username, password });
+      Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
+      window.location.href = "frontend/pages/dashboard.html";
+    } catch (e) {
+      showAlert("loginAlert", e.message);
+      btn.disabled = false;
+      btn.innerHTML = "Login";
+    }
+  }
+
+  async function doRegister() {
+    const btn = document.getElementById("regBtn");
+    const fullName = document.getElementById("regName").value.trim();
+    const username = document.getElementById("regUsername").value.trim();
+    const email    = document.getElementById("regEmail").value.trim();
+    const phone    = document.getElementById("regPhone").value.trim();
+    const password = document.getElementById("regPassword").value;
+    const confirm  = document.getElementById("regConfirm").value;
+
+    if (!fullName || !username || !email || !password) {
+      showAlert("regAlert", "All fields are required"); return;
+    }
+    if (password !== confirm) {
+      showAlert("regAlert", "Passwords do not match"); return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Creating...';
+
+    try {
+      const data = await API.call("/auth/register", "POST", { fullName, username, email, phone, password });
+      Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
+      window.location.href = "frontend/pages/dashboard.html";
+    } catch (e) {
+      showAlert("regAlert", e.message);
+      btn.disabled = false;
+      btn.innerHTML = "Create Account";
+    }
+  }
+
+  // Allow Enter key on login
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      const pane = document.getElementById("loginPane");
+      if (pane.classList.contains("active")) doLogin();
+    }
+  });
+</script>
+</body>
+</html>
