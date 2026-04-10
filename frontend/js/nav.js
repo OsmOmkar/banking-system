@@ -1,5 +1,3 @@
-<!-- Shared sidebar nav — included in all app pages -->
-<script>
 function renderSidebar(activePage) {
     const user = Auth.getUser();
     document.getElementById("sidebarMount").innerHTML = `
@@ -46,4 +44,3 @@ async function logout() {
     Auth.clear();
     window.location.href = "/index.html";
 }
-</script>
