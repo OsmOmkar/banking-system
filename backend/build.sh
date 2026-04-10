@@ -15,7 +15,11 @@ echo "==> Compiling Java sources..."
 find src/main/java -name "*.java" > sources.txt
 cat sources.txt
 
-javac -encoding UTF-8 -cp "lib/postgresql.jar" -d out @sources.txt
+javac -encoding UTF-8 -cp "lib/postgresql.jar" -d out @sources.txt 2>&1
+if [ $? -ne 0 ]; then
+    echo "ERROR: Compilation failed above"
+    exit 1
+fi
 
 echo "==> Copying resources..."
 cp -r src/main/resources/* out/
