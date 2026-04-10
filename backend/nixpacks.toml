@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["jdk21", "curl"]
+nixPkgs = ["jdk17", "curl"]
 
 [phases.build]
 cmds = ["bash build.sh"]
