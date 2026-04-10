@@ -32,7 +32,25 @@ public class BankingServer {
         });
 
         server.createContext("/", (HttpExchange exchange) -> {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            String path = exchange.getRequestURI().getPath();
+
+            // Fast2SMS / any domain-verification file — serves the filename as content
+            // e.g. /fast2sms-verify-abc123.txt  →  "fast2sms-verify-abc123.txt"
+            // This lets Fast2SMS confirm you own the domain automatically.
+            if (path.endsWith(".txt") || path.contains("verify") || path.contains("verification")) {
+                String filename = path.replaceFirst("^/", ""); // strip leading /
+                byte[] response = filename.getBytes();
+                exchange.getResponseHeaders().add("Content-Type", "text/plain");
+                exchange.sendResponseHeaders(200, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.getResponseBody().close();
+                System.out.println("[BankingServer] Served verification file: " + path);
+                return;
+            }
+
             byte[] response = "JavaBank API is running!".getBytes();
+            exchange.getResponseHeaders().add("Content-Type", "text/plain");
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
             exchange.getResponseBody().close();
