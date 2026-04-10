@@ -209,12 +209,12 @@
             Enter the 6-digit OTP from your email / server console.
           </p>
           <div class="otp-row">
-            <input class="otp-digit" id="d1" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,null,'d2')">
-            <input class="otp-digit" id="d2" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d1','d3')">
-            <input class="otp-digit" id="d3" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d2','d4')">
-            <input class="otp-digit" id="d4" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d3','d5')">
-            <input class="otp-digit" id="d5" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d4','d6')">
-            <input class="otp-digit" id="d6" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d5',null)">
+            <input class="otp-digit" id="d1" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,null,'d2')" onkeydown="otpKeydown(this,null)">
+            <input class="otp-digit" id="d2" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d1','d3')" onkeydown="otpKeydown(this,'d1')">
+            <input class="otp-digit" id="d3" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d2','d4')" onkeydown="otpKeydown(this,'d2')">
+            <input class="otp-digit" id="d4" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d3','d5')" onkeydown="otpKeydown(this,'d3')">
+            <input class="otp-digit" id="d5" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d4','d6')" onkeydown="otpKeydown(this,'d4')">
+            <input class="otp-digit" id="d6" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'d5',null)" onkeydown="otpKeydown(this,'d5')">
           </div>
           <div class="otp-timer">OTP expires in <span id="otpCountdown">10:00</span></div>
           <button class="btn btn-primary" id="verifyOtpBtn" onclick="verifyOTP()" style="margin-top:1rem;">Verify OTP</button>
@@ -350,7 +350,6 @@
 
   // ─── Step 1 → Step 2 (validate then send OTP) ───────────
   async function goToStep2() {
-    // Trigger all validations
     validateNameField(); validateUsernameField(); validateEmailField();
     validatePhoneField(); updatePasswordStrength();
 
@@ -397,6 +396,16 @@
     }
   }
 
+  // ─── OTP backspace: jump to previous box ─────────────────
+  function otpKeydown(el, prevId) {
+    if (event.key === 'Backspace' && el.value === '' && prevId) {
+      const prev = document.getElementById(prevId);
+      prev.value = '';
+      prev.classList.remove('filled');
+      prev.focus();
+    }
+  }
+
   function getOtpValue() {
     return ['d1','d2','d3','d4','d5','d6'].map(id => document.getElementById(id).value).join('');
   }
@@ -413,7 +422,6 @@
 
     try {
       await API.call('/auth/verify-otp', 'POST', { email, otp });
-      // Email verified — now register
       clearInterval(otpTimerInterval);
       showStep(3);
       await doRegister();
@@ -433,7 +441,7 @@
         email:     document.getElementById('regEmail').value.trim(),
         phone:     document.getElementById('regPhone').value.trim(),
         password:  document.getElementById('regPassword').value,
-        otpToken:  'verified'  // tells server we completed OTP
+        otpToken:  'verified'
       });
       Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName });
       window.location.href = '/pages/dashboard.html';
@@ -453,7 +461,11 @@
       otpSecondsLeft = 600;
       startOtpTimer();
       document.getElementById('resendOtpBtn').disabled = true;
-      ['d1','d2','d3','d4','d5','d6'].forEach(id => { const el = document.getElementById(id); el.value = ''; el.classList.remove('filled'); });
+      ['d1','d2','d3','d4','d5','d6'].forEach(id => {
+        const el = document.getElementById(id);
+        el.value = '';
+        el.classList.remove('filled');
+      });
       document.getElementById('d1').focus();
     } catch (e) {
       showAlert('regAlert', e.message);
@@ -486,7 +498,6 @@
     document.getElementById('regStep2').style.display = n === 2 ? 'block' : 'none';
     document.getElementById('regStep3').style.display = n === 3 ? 'block' : 'none';
 
-    // Update step dots
     for (let i = 1; i <= 3; i++) {
       const dot = document.getElementById('dot' + i);
       const lbl = document.getElementById('lbl' + i);
@@ -497,8 +508,7 @@
       else { dot.textContent = i; }
     }
     for (let i = 1; i <= 2; i++) {
-      const line = document.getElementById('line' + i);
-      line.classList.toggle('done', i < n);
+      document.getElementById('line' + i).classList.toggle('done', i < n);
     }
 
     document.getElementById('regAlert').innerHTML = '';
