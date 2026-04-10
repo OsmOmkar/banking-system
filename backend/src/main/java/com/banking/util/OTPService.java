@@ -26,6 +26,10 @@ public class OTPService {
     // An email is added here after OTP is successfully verified
     private static final Set<String> verifiedEmails = ConcurrentHashMap.newKeySet();
 
+    // SYLLABUS: Unit IV - Set (thread-safe) for verified phone numbers
+    // A phone is added here after SMS OTP is successfully verified
+    private static final Set<String> verifiedPhones = ConcurrentHashMap.newKeySet();
+
     private static final SecureRandom random = new SecureRandom();
 
     // ----- Inner class to hold OTP data -----
@@ -121,5 +125,34 @@ public class OTPService {
      */
     public static void clearVerified(String email) {
         verifiedEmails.remove(email.toLowerCase().trim());
+    }
+}
+// NOTE: appended below — phone verification tracking (same pattern as email)
+
+    // =========================================================
+    // Phone verification tracking
+    // Called after verifyOTP returns "VALID" for phone registration
+    // =========================================================
+
+    /**
+     * Mark a phone number as verified (called after successful SMS OTP check).
+     */
+    public static void markPhoneVerified(String phone) {
+        verifiedPhones.add(phone.trim());
+        System.out.println("[OTPService] Phone marked as verified: +91" + phone);
+    }
+
+    /**
+     * Check if the given phone number has been verified via OTP.
+     */
+    public static boolean isPhoneVerified(String phone) {
+        return verifiedPhones.contains(phone.trim());
+    }
+
+    /**
+     * Remove phone verification marker (called after successful registration).
+     */
+    public static void clearPhoneVerified(String phone) {
+        verifiedPhones.remove(phone.trim());
     }
 }

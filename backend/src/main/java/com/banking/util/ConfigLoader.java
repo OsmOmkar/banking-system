@@ -30,11 +30,24 @@ public class ConfigLoader {
         }
     }
     
+    /**
+     * Returns config value. Priority order:
+     * 1. Environment variable (e.g. db.password → DB_PASSWORD)
+     * 2. config.properties file
+     * 3. null
+     */
     public static String get(String key) {
+        // Convert "db.password" → "DB_PASSWORD" for env var lookup
+        String envKey = key.replace(".", "_").replace("-", "_").toUpperCase();
+        String envVal = System.getenv(envKey);
+        if (envVal != null && !envVal.isBlank()) {
+            return envVal;
+        }
         return properties.getProperty(key);
     }
-    
+
     public static String get(String key, String defaultValue) {
-        return properties.getProperty(key, defaultValue);
+        String val = get(key);
+        return (val != null) ? val : defaultValue;
     }
 }

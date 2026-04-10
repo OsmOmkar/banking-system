@@ -358,6 +358,7 @@ public class AuthHandler extends BaseHandler {
 
         String result = OTPService.verifyOTP("phone:" + phone, otp);
         if ("VALID".equals(result)) {
+            OTPService.markPhoneVerified(phone);
             userDAO.markPhoneVerified(phone);
             sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
                     JsonUtil.field("message", "Phone verified successfully"),

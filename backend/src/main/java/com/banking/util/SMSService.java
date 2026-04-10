@@ -1,22 +1,41 @@
 package com.banking.util;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+
 // =============================================
 // SYLLABUS: Unit IV - Networking (HTTP-based SMS API)
 //           Unit III - Packages & Utility Classes
-// Using Twilio - FREE $15 trial credit (~500 SMS)
-// Sign up at: https://www.twilio.com/try-twilio
+// Using Fast2SMS - Free Indian SMS gateway
+// No external JAR needed - uses Java 17 HttpClient
+// Sign up at: https://www.fast2sms.com
 // =============================================
 public class SMSService {
 
     // ------------------------------------
-    // Fill these in after Twilio signup:
+    // Fill this in after Fast2SMS signup:
+    // Go to fast2sms.com → Dashboard → Dev API → Copy your API key
     // ------------------------------------
-    private static final String ACCOUNT_SID = "YOUR_TWILIO_ACCOUNT_SID";
-    private static final String AUTH_TOKEN  = "YOUR_TWILIO_AUTH_TOKEN";
-    private static final String FROM_PHONE  = "YOUR_TWILIO_PHONE_NUMBER"; // e.g. +12345678901
+    private static final String API_KEY = ConfigLoader.get("sms.fast2sms.apikey", "YOUR_FAST2SMS_API_KEY");
 
+    // Fast2SMS Quick SMS route — no DLT registration needed for dev/testing
+    private static final String API_URL = "https://www.fast2sms.com/dev/bulkV2";
+
+    // Java 17 built-in HTTP client — no extra dependency needed
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    // ---------------------------------------------------------------
+    // Send OTP SMS during phone verification at registration
+    // ---------------------------------------------------------------
     public static void sendOTPSms(String toPhone, String userName, String otp) {
-        String message = "Dear " + userName + ", your JavaBank verification OTP is: "
+        String message = "Dear " + userName + ", your JavaBank OTP is: "
                 + otp + ". Valid for 10 minutes. Do not share this with anyone.";
 
         System.out.println("========================================");
@@ -26,10 +45,12 @@ public class SMSService {
         System.out.println("  Message : " + message);
         System.out.println("========================================");
 
-        // Uncomment below when Twilio credentials are filled in above
-        // sendViaTwilio("+91" + toPhone, message);
+        sendViaFast2SMS(toPhone, message);
     }
 
+    // ---------------------------------------------------------------
+    // Send Fraud Alert SMS — called by FraudDetectionThread
+    // ---------------------------------------------------------------
     public static void sendFraudAlertSms(String toPhone, String userName,
                                           String txType, double amount,
                                           int pendingTxId) {
@@ -46,29 +67,54 @@ public class SMSService {
         System.out.println("  Message : " + message);
         System.out.println("========================================");
 
-        // Uncomment below when Twilio credentials are filled in above
-        // sendViaTwilio("+91" + toPhone, message);
+        sendViaFast2SMS(toPhone, message);
     }
 
-    // -------------------------------------------------------
-    // TWILIO SEND METHOD
-    // Uncomment this entire method when credentials are ready
-    // Also add Twilio JAR to your project dependencies
-    // Download from: https://github.com/twilio/twilio-java/releases
-    // -------------------------------------------------------
-    /*
-    private static void sendViaTwilio(String toPhone, String messageBody) {
+    // ---------------------------------------------------------------
+    // Core method — calls Fast2SMS REST API
+    // SYLLABUS: Unit IV - Networking (HttpClient, URI, HTTP GET)
+    // ---------------------------------------------------------------
+    private static void sendViaFast2SMS(String toPhone, String messageBody) {
+        // Guard: if API key is not configured yet, just log and return
+        if (API_KEY == null || API_KEY.equals("YOUR_FAST2SMS_API_KEY") || API_KEY.trim().isEmpty()) {
+            System.err.println("[SMSService] Fast2SMS API key not configured. " +
+                    "Add 'sms.fast2sms.apikey=YOUR_KEY' to config.properties");
+            return;
+        }
+
         try {
-            com.twilio.Twilio.init(ACCOUNT_SID, AUTH_TOKEN);
-            com.twilio.rest.api.v2010.account.Message.creator(
-                new com.twilio.type.PhoneNumber(toPhone),
-                new com.twilio.type.PhoneNumber(FROM_PHONE),
-                messageBody
-            ).create();
-            System.out.println("[SMSService] SMS sent successfully to: " + toPhone);
+            // Build the query string
+            // route=q  → Quick SMS (no DLT needed, works for all Indian +91 numbers)
+            // language=english → plain ASCII text
+            // numbers  → 10-digit Indian mobile number (WITHOUT +91 prefix)
+            String encodedMessage = URLEncoder.encode(messageBody, StandardCharsets.UTF_8);
+            String url = API_URL
+                    + "?authorization=" + API_KEY
+                    + "&message=" + encodedMessage
+                    + "&language=english"
+                    + "&route=q"
+                    + "&numbers=" + toPhone;   // e.g. 9876543210
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(15))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("[SMSService] Fast2SMS response (" + response.statusCode() + "): "
+                    + response.body());
+
+            if (response.statusCode() == 200 && response.body().contains("\"return\":true")) {
+                System.out.println("[SMSService] SMS sent successfully to: +91" + toPhone);
+            } else {
+                System.err.println("[SMSService] SMS delivery may have failed. Check Fast2SMS response above.");
+            }
+
         } catch (Exception e) {
             System.err.println("[SMSService] Failed to send SMS: " + e.getMessage());
         }
     }
-    */
 }
