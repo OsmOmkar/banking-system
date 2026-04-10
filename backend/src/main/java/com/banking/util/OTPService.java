@@ -126,8 +126,6 @@ public class OTPService {
     public static void clearVerified(String email) {
         verifiedEmails.remove(email.toLowerCase().trim());
     }
-}
-// NOTE: appended below — phone verification tracking (same pattern as email)
 
     // =========================================================
     // Phone verification tracking
