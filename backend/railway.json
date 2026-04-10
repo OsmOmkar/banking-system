@@ -1,1 +1,5 @@
-'{"deploy": {"startCommand": "java -cp out:lib/postgresql.jar com.banking.BankingServer"}}' 
+{
+  "deploy": {
+    "startCommand": "java -cp out:lib/postgresql.jar com.banking.BankingServer"
+  }
+}
