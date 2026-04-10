@@ -16,7 +16,7 @@ fi
 echo "==> Compiling Java sources..."
 find src/main/java -name "*.java" > sources.txt
 
-javac -encoding UTF-8 -cp "lib/postgresql.jar" -d out @sources.txt 2>&1
+javac -source 17 -target 17 -encoding UTF-8 -cp "lib/postgresql.jar" -d out @sources.txt 2>&1
 if [ $? -ne 0 ]; then
     echo "ERROR: Compilation failed"
     exit 1
