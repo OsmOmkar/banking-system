@@ -12,7 +12,8 @@ import java.nio.charset.StandardCharsets;
 // =============================================
 public class EmailService {
 
-    private static final String RESEND_API_KEY = "re_G54FYoXP_4Uh9Su4jouY3rch5c4ScUB99";
+    private static final String RESEND_API_KEY = System.getenv("RESEND_API_KEY") != null 
+    ? System.getenv("RESEND_API_KEY") : "";
     private static final String FROM_EMAIL     = "onboarding@resend.dev";
 
     public static void sendOTPEmail(String toEmail, String userName, String otp) {
