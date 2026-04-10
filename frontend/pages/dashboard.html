@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — JavaBank</title>
-<<<<<<< HEAD
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
@@ -46,9 +45,6 @@
       margin-left: 6px; vertical-align: middle;
     }
   </style>
-=======
-  <link rel="stylesheet" href="../css/style.css">
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 </head>
 <body>
 <div class="app-layout">
@@ -60,7 +56,6 @@
       <p>Here's your financial overview</p>
     </div>
 
-<<<<<<< HEAD
     <!-- Pending Fraud Confirmation Banner -->
     <div class="pending-banner hidden" id="pendingBanner">
       <div class="pending-banner-left">
@@ -73,8 +68,6 @@
       <a href="pending.html" class="pending-banner-btn">Review Now →</a>
     </div>
 
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     <!-- Stats -->
     <div class="stats-grid" id="statsGrid">
       <div class="stat-card blue">
@@ -130,13 +123,8 @@
   </main>
 </div>
 
-<<<<<<< HEAD
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
-=======
-<script src="../js/config.js"></script>
-<script src="../js/nav.js"></script>
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 <script>
 Auth.requireAuth();
 const user = Auth.getUser();
@@ -229,7 +217,6 @@ function txBadge(type) {
 }
 
 loadDashboard();
-<<<<<<< HEAD
 checkPendingAlerts();
 // Re-check every 30 seconds
 setInterval(checkPendingAlerts, 30000);
@@ -251,8 +238,6 @@ async function checkPendingAlerts() {
         }
     } catch(e) { /* silent */ }
 }
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 </script>
 </body>
 </html>

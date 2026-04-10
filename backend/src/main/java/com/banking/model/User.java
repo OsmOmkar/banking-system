@@ -1,24 +1,15 @@
 package com.banking.model;
 
-<<<<<<< HEAD
 import java.sql.Date;
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 import java.sql.Timestamp;
 
 // =============================================
 // SYLLABUS: Unit II - Classes and Objects, Encapsulation
-<<<<<<< HEAD
 // Enhanced with KYC (Know Your Customer) fields for real banking simulation
 // =============================================
 public class User {
 
     // Basic Information
-=======
-// =============================================
-public class User {
-
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     private int id;
     private String username;
     private String email;
@@ -28,7 +19,6 @@ public class User {
     private Timestamp createdAt;
     private boolean active;
 
-<<<<<<< HEAD
     // KYC Personal Details
     private Date dateOfBirth;
     private String gender;              // MALE, FEMALE, OTHER
@@ -62,8 +52,6 @@ public class User {
     private boolean phoneVerified;
     private boolean kycVerified;
 
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     public User() {}
 
     public User(int id, String username, String email, String fullName, String phone) {
@@ -73,18 +61,12 @@ public class User {
         this.fullName = fullName;
         this.phone = phone;
         this.active = true;
-<<<<<<< HEAD
         this.emailVerified = false;
         this.phoneVerified = false;
         this.kycVerified = false;
     }
 
     // Basic Getters and Setters
-=======
-    }
-
-    // Getters and Setters
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public String getUsername() { return username; }
@@ -101,7 +83,6 @@ public class User {
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
-<<<<<<< HEAD
 
     // KYC Personal Details Getters and Setters
     public Date getDateOfBirth() { return dateOfBirth; }
@@ -156,6 +137,4 @@ public class User {
     public void setPhoneVerified(boolean phoneVerified) { this.phoneVerified = phoneVerified; }
     public boolean isKycVerified() { return kycVerified; }
     public void setKycVerified(boolean kycVerified) { this.kycVerified = kycVerified; }
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 }

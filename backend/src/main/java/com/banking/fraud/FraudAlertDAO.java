@@ -34,22 +34,6 @@ public class FraudAlertDAO {
         return alert;
     }
 
-<<<<<<< HEAD
-=======
-    public FraudAlert findById(int id) {
-        String sql = "SELECT * FROM fraud_alerts WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return mapRow(rs);
-        } catch (SQLException e) {
-            System.err.println("[FraudAlertDAO] FindById error: " + e.getMessage());
-        }
-        return null;
-    }
-
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     public List<FraudAlert> findByAccountId(int accountId) {
         List<FraudAlert> list = new ArrayList<>();
         String sql = "SELECT * FROM fraud_alerts WHERE account_id = ? ORDER BY created_at DESC LIMIT 20";
@@ -96,20 +80,6 @@ public class FraudAlertDAO {
         }
     }
 
-<<<<<<< HEAD
-=======
-    public void resolveAndReverse(int alertId) {
-        String sql = "UPDATE fraud_alerts SET is_resolved = TRUE, is_reversed = TRUE WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, alertId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.err.println("[FraudAlertDAO] ResolveAndReverse error: " + e.getMessage());
-        }
-    }
-
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     private FraudAlert mapRow(ResultSet rs) throws SQLException {
         FraudAlert alert = new FraudAlert();
         alert.setId(rs.getInt("id"));
@@ -119,10 +89,6 @@ public class FraudAlertDAO {
         alert.setDescription(rs.getString("description"));
         alert.setSeverity(Severity.valueOf(rs.getString("severity")));
         alert.setResolved(rs.getBoolean("is_resolved"));
-<<<<<<< HEAD
-=======
-        alert.setReversed(rs.getBoolean("is_reversed"));
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         alert.setCreatedAt(rs.getTimestamp("created_at"));
         return alert;
     }

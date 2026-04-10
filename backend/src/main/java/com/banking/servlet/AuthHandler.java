@@ -2,25 +2,18 @@ package com.banking.servlet;
 
 import com.banking.exception.AuthenticationException;
 import com.banking.model.User;
-<<<<<<< HEAD
 import com.banking.util.EmailService;
 import com.banking.util.JsonUtil;
 import com.banking.util.OTPService;
 import com.banking.util.SMSService;
 import com.banking.util.ValidationUtil;
-=======
-import com.banking.util.JsonUtil;
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 import com.sun.net.httpserver.HttpExchange;
 
 import java.util.Map;
 
 // SYLLABUS: Unit II - Inheritance (extends BaseHandler)
 //           Unit III - Exception handling
-<<<<<<< HEAD
 //           Unit III - Packages (uses ValidationUtil, OTPService)
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 public class AuthHandler extends BaseHandler {
 
     @Override
@@ -28,11 +21,7 @@ public class AuthHandler extends BaseHandler {
 
     @Override
     protected void handleRequest(HttpExchange exchange, User user, String body) throws Exception {
-<<<<<<< HEAD
         String path   = exchange.getRequestURI().getPath();
-=======
-        String path = exchange.getRequestURI().getPath();
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         String method = exchange.getRequestMethod();
 
         if ("POST".equals(method) && path.endsWith("/login")) {
@@ -41,7 +30,6 @@ public class AuthHandler extends BaseHandler {
             handleRegister(exchange, body);
         } else if ("POST".equals(method) && path.endsWith("/logout")) {
             handleLogout(exchange);
-<<<<<<< HEAD
         } else if ("POST".equals(method) && path.endsWith("/send-otp")) {
             handleSendOTP(exchange, body);
         } else if ("POST".equals(method) && path.endsWith("/verify-otp")) {
@@ -54,19 +42,14 @@ public class AuthHandler extends BaseHandler {
             handleSendPhoneOTP(exchange, body);
         } else if ("POST".equals(method) && path.endsWith("/verify-phone-otp")) {
             handleVerifyPhoneOTP(exchange, body);
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         } else {
             sendResponse(exchange, 404, JsonUtil.error("Not found"));
         }
     }
 
-<<<<<<< HEAD
     // ---------------------------------------------------------------
     // Login
     // ---------------------------------------------------------------
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     private void handleLogin(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
         String username = data.get("username");
@@ -95,7 +78,6 @@ public class AuthHandler extends BaseHandler {
         sendResponse(exchange, 200, json);
     }
 
-<<<<<<< HEAD
     // ---------------------------------------------------------------
     // Register — with full validation
     // SYLLABUS: Unit III - Packages (ValidationUtil in util package)
@@ -111,23 +93,11 @@ public class AuthHandler extends BaseHandler {
         String otpToken  = data.get("otpToken"); // indicates email was verified
 
         // ---- Step 1: Basic null check ----
-=======
-    private void handleRegister(HttpExchange exchange, String body) throws Exception {
-        Map<String, String> data = parseJson(body);
-
-        String username = data.get("username");
-        String email    = data.get("email");
-        String fullName = data.get("fullName");
-        String phone    = data.get("phone");
-        String password = data.get("password");
-
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         if (username == null || email == null || password == null || fullName == null) {
             sendResponse(exchange, 400, JsonUtil.error("All fields are required"));
             return;
         }
 
-<<<<<<< HEAD
         // ---- Step 2: Validate full name (no fake names) ----
         String nameError = ValidationUtil.validateFullName(fullName);
         if (nameError != null) {
@@ -176,20 +146,15 @@ public class AuthHandler extends BaseHandler {
         }
 
         // ---- Step 8: Register ----
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         User newUser = userDAO.register(username, email, fullName, phone, password);
         if (newUser == null) {
             sendResponse(exchange, 409, JsonUtil.error("Username or email already exists"));
             return;
         }
 
-<<<<<<< HEAD
         // Clear the verified marker after successful registration
         OTPService.clearVerified(email);
 
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         String token = userDAO.createSession(newUser.getId());
         String json = JsonUtil.success(JsonUtil.object(
                 JsonUtil.field("token", token),
@@ -200,7 +165,6 @@ public class AuthHandler extends BaseHandler {
         sendResponse(exchange, 201, json);
     }
 
-<<<<<<< HEAD
     // ---------------------------------------------------------------
     // POST /api/auth/send-otp — generates OTP and "sends" to email
     // SYLLABUS: Unit IV - Networking concept (email is network-based)
@@ -274,8 +238,6 @@ public class AuthHandler extends BaseHandler {
     // ---------------------------------------------------------------
     // Logout
     // ---------------------------------------------------------------
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     private void handleLogout(HttpExchange exchange) throws Exception {
         String auth = exchange.getRequestHeaders().getFirst("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {
@@ -283,7 +245,6 @@ public class AuthHandler extends BaseHandler {
         }
         sendResponse(exchange, 200, JsonUtil.success("\"Logged out\""));
     }
-<<<<<<< HEAD
 
     // ========================================================================
     // OTP Verification Methods (email/phone specific endpoints)
@@ -410,6 +371,4 @@ public class AuthHandler extends BaseHandler {
             sendResponse(exchange, 400, JsonUtil.error("Invalid or expired OTP"));
         }
     }
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 }

@@ -13,10 +13,6 @@ public class FraudAlert {
     private String description;
     private Severity severity;
     private boolean resolved;
-<<<<<<< HEAD
-=======
-    private boolean reversed;
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     private Timestamp createdAt;
 
     public FraudAlert() {}
@@ -28,10 +24,6 @@ public class FraudAlert {
         this.description = description;
         this.severity = severity;
         this.resolved = false;
-<<<<<<< HEAD
-=======
-        this.reversed = false;
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     }
 
     public int getId() { return id; }
@@ -48,11 +40,6 @@ public class FraudAlert {
     public void setSeverity(Severity severity) { this.severity = severity; }
     public boolean isResolved() { return resolved; }
     public void setResolved(boolean resolved) { this.resolved = resolved; }
-<<<<<<< HEAD
-=======
-    public boolean isReversed() { return reversed; }
-    public void setReversed(boolean reversed) { this.reversed = reversed; }
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
 }

@@ -4,29 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fraud Alerts — JavaBank</title>
-<<<<<<< HEAD
   <link rel="stylesheet" href="/css/style.css">
-=======
-  <link rel="stylesheet" href="../css/style.css">
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 </head>
 <body>
 <div class="app-layout">
   <div id="sidebarMount"></div>
-<<<<<<< HEAD
 
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
   <main class="main-content">
     <div class="page-header">
       <h1>🚨 Fraud Alerts</h1>
       <p>Real-time fraud detection powered by Java Multithreading</p>
     </div>
 
-<<<<<<< HEAD
     <!-- How it works banner -->
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);color:white;border-radius:12px;padding:20px;margin-bottom:24px">
       <h3 style="margin-bottom:8px">🧵 Java Multithreading Fraud Engine</h3>
       <p style="font-size:.875rem;opacity:.9;line-height:1.6">
@@ -45,10 +35,7 @@
 
     <div id="alertBox"></div>
 
-<<<<<<< HEAD
     <!-- Account selector + stats -->
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     <div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:10px">
         <label style="font-weight:500;font-size:.9rem">Account:</label>
@@ -61,22 +48,15 @@
       <button class="btn btn-outline btn-sm" onclick="loadAlerts()">↻ Refresh</button>
     </div>
 
-<<<<<<< HEAD
     <!-- Stats row -->
     <div class="stats-grid" id="fraudStats" style="margin-bottom:20px">
-=======
-    <div class="stats-grid" style="margin-bottom:20px">
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
       <div class="stat-card red"><div class="label">Total Alerts</div><div class="value" id="totalAlerts">-</div></div>
       <div class="stat-card orange"><div class="label">Unresolved</div><div class="value" id="unresolvedCount">-</div></div>
       <div class="stat-card"><div class="label">Critical</div><div class="value" id="criticalCount" style="color:#7c3aed">-</div></div>
       <div class="stat-card green"><div class="label">Resolved</div><div class="value" id="resolvedCount">-</div></div>
     </div>
 
-<<<<<<< HEAD
     <!-- Alerts table -->
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
         <span>🚨 Fraud Alert History</span>
@@ -87,11 +67,6 @@
           <thead>
             <tr>
               <th>Date & Time</th>
-<<<<<<< HEAD
-=======
-              <th>Txn ID</th>
-              <th>Amount</th>
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
               <th>Alert Type</th>
               <th>Description</th>
               <th>Severity</th>
@@ -100,11 +75,7 @@
             </tr>
           </thead>
           <tbody id="alertsBody">
-<<<<<<< HEAD
             <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:32px">
-=======
-            <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:32px">
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
               Select an account to view fraud alerts
             </td></tr>
           </tbody>
@@ -112,10 +83,7 @@
       </div>
     </div>
 
-<<<<<<< HEAD
     <!-- Detection rules reference -->
-=======
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     <div class="card" style="margin-top:20px">
       <div class="card-title">📖 Detection Rules (Java Implementation)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
@@ -146,11 +114,7 @@
         <div style="padding:16px;border:1px solid var(--border);border-radius:10px">
           <div style="font-size:1.2rem;margin-bottom:6px">🌐</div>
           <div style="font-weight:600;margin-bottom:4px">IP Velocity</div>
-<<<<<<< HEAD
           <div style="font-size:.8rem;color:#6b7280">10+ transactions from same IP in 10 minutes. HashMap&lt;String, List&lt;Long&gt;&gt; tracks timestamps.</div>
-=======
-          <div style="font-size:.8rem;color:#6b7280">10+ transactions from same IP in 10 minutes. HashMap tracks timestamps.</div>
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
           <div style="margin-top:8px"><span class="badge badge-yellow">MEDIUM</span></div>
         </div>
       </div>
@@ -158,13 +122,8 @@
   </main>
 </div>
 
-<<<<<<< HEAD
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
-=======
-<script src="../js/config.js"></script>
-<script src="../js/nav.js"></script>
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 <script>
 Auth.requireAuth();
 renderSidebar("fraud");
@@ -174,23 +133,17 @@ async function init() {
     const sel = document.getElementById("accountSelect");
     sel.innerHTML = accounts.map(a =>
         `<option value="${a.id}">${a.accountType} — ${a.accountNumber}</option>`).join("");
-<<<<<<< HEAD
 
     // Check URL param
     const params = new URLSearchParams(window.location.search);
     if (params.get("accountId")) sel.value = params.get("accountId");
 
-=======
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("accountId")) sel.value = params.get("accountId");
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     if (accounts.length > 0) loadAlerts();
 }
 
 async function loadAlerts() {
     const accountId = document.getElementById("accountSelect").value;
     if (!accountId) return;
-<<<<<<< HEAD
 
     const tbody = document.getElementById("alertsBody");
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px">
@@ -201,14 +154,6 @@ async function loadAlerts() {
         const alerts = await API.call(`/fraud/alerts?accountId=${accountId}`);
 
         // Update stats
-=======
-    const tbody = document.getElementById("alertsBody");
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px">
-      <span class="loader" style="border-color:rgba(0,0,0,.2);border-top-color:var(--primary)"></span>
-    </td></tr>`;
-    try {
-        const alerts = await API.call(`/fraud/alerts?accountId=${accountId}`);
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
         document.getElementById("totalAlerts").textContent = alerts.length;
         document.getElementById("unresolvedCount").textContent = alerts.filter(a => !a.resolved).length;
         document.getElementById("criticalCount").textContent  = alerts.filter(a => a.severity === "CRITICAL").length;
@@ -216,23 +161,17 @@ async function loadAlerts() {
         document.getElementById("alertSubtitle").textContent  = `${alerts.length} alert(s) found`;
 
         if (alerts.length === 0) {
-<<<<<<< HEAD
             tbody.innerHTML = `<tr><td colspan="6">
               <div class="empty-state">
                 <div class="icon">✅</div>
                 <p>No fraud alerts for this account. All clear!</p>
               </div>
-=======
-            tbody.innerHTML = `<tr><td colspan="8">
-              <div class="empty-state"><div class="icon">✅</div><p>No fraud alerts. All clear!</p></div>
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
             </td></tr>`;
             return;
         }
 
         tbody.innerHTML = alerts.map(alert => `<tr>
           <td style="font-size:.8rem">${fmtDate(alert.date)}</td>
-<<<<<<< HEAD
           <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">
             ${alert.alertType}
           </code></td>
@@ -252,27 +191,6 @@ async function loadAlerts() {
 
     } catch(e) {
         tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center">${e.message}</td></tr>`;
-=======
-          <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">#${alert.transactionId}</code></td>
-          <td style="font-weight:600;color:var(--danger)">—</td>
-          <td><code style="font-size:.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px">${alert.alertType}</code></td>
-          <td style="max-width:220px;font-size:.85rem">${alert.description}</td>
-          <td><span class="badge ${sevBadge(alert.severity)} sev-${alert.severity}">${sevIcon(alert.severity)} ${alert.severity}</span></td>
-          <td>${alert.reversed
-            ? '<span class="badge badge-blue">↩ Reversed</span>'
-            : alert.resolved
-              ? '<span class="badge badge-green">✓ Resolved</span>'
-              : '<span class="badge badge-red">⚡ Active</span>'}</td>
-          <td>${!alert.resolved && !alert.reversed
-            ? `<div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button class="btn btn-outline btn-sm" onclick="resolve(${alert.id})">✓ Resolve</button>
-                <button class="btn btn-danger btn-sm" onclick="reportAndReverse(${alert.id})">↩ Reverse</button>
-               </div>`
-            : '<span style="color:#9ca3af;font-size:.8rem">—</span>'}</td>
-        </tr>`).join("");
-    } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="8" style="color:red;text-align:center">${e.message}</td></tr>`;
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     }
 }
 
@@ -284,38 +202,16 @@ async function resolve(alertId) {
         setTimeout(() => document.getElementById("alertBox").innerHTML = "", 3000);
         loadAlerts();
     } catch(e) {
-<<<<<<< HEAD
         document.getElementById("alertBox").innerHTML =
           `<div class="alert alert-error">${e.message}</div>`;
-=======
-        document.getElementById("alertBox").innerHTML = `<div class="alert alert-error">${e.message}</div>`;
-    }
-}
-
-async function reportAndReverse(alertId) {
-    if (!confirm("This will reverse the transaction and credit the amount back to your account. Continue?")) return;
-    try {
-        await API.call("/fraud/reverse", "POST", { alertId });
-        document.getElementById("alertBox").innerHTML =
-          `<div class="alert alert-success">✅ Transaction reversed! Amount has been credited back to your account.</div>`;
-        setTimeout(() => document.getElementById("alertBox").innerHTML = "", 5000);
-        loadAlerts();
-    } catch(e) {
-        document.getElementById("alertBox").innerHTML = `<div class="alert alert-error">${e.message}</div>`;
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
     }
 }
 
 function sevBadge(sev) {
-<<<<<<< HEAD
     return { LOW:"badge-gray", MEDIUM:"badge-yellow", HIGH:"badge-red",
              CRITICAL:"badge-red" }[sev] || "badge-gray";
 }
 
-=======
-    return { LOW:"badge-gray", MEDIUM:"badge-yellow", HIGH:"badge-red", CRITICAL:"badge-red" }[sev] || "badge-gray";
-}
->>>>>>> f06de9c560d0aae7f204cd6f9d6eec13caa025a7
 function sevIcon(sev) {
     return { LOW:"🟡", MEDIUM:"🟠", HIGH:"🔴", CRITICAL:"🟣" }[sev] || "";
 }
