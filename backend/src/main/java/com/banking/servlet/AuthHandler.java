@@ -42,13 +42,19 @@ public class AuthHandler extends BaseHandler {
             handleSendPhoneOTP(exchange, body);
         } else if ("POST".equals(method) && path.endsWith("/verify-phone-otp")) {
             handleVerifyPhoneOTP(exchange, body);
+        } else if ("POST".equals(method) && path.endsWith("/login-phone-otp")) {
+            handleSendPhoneLoginOTP(exchange, body);
+        } else if ("POST".equals(method) && path.endsWith("/verify-phone-login")) {
+            handleVerifyPhoneLogin(exchange, body);
+        } else if ("POST".equals(method) && path.endsWith("/check-availability")) {
+            handleCheckAvailability(exchange, body);
         } else {
             sendResponse(exchange, 404, JsonUtil.error("Not found"));
         }
     }
 
     // ---------------------------------------------------------------
-    // Login
+    // Login (username + password)
     // ---------------------------------------------------------------
     private void handleLogin(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
@@ -60,7 +66,6 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // SYLLABUS: Unit III - Custom exception
         User authed = userDAO.authenticate(username, password);
         if (authed == null) {
             throw new AuthenticationException("Invalid username or password");
@@ -79,8 +84,7 @@ public class AuthHandler extends BaseHandler {
     }
 
     // ---------------------------------------------------------------
-    // Register — with full validation
-    // SYLLABUS: Unit III - Packages (ValidationUtil in util package)
+    // Register — 4-step: details → email OTP → phone OTP → done
     // ---------------------------------------------------------------
     private void handleRegister(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
@@ -90,7 +94,7 @@ public class AuthHandler extends BaseHandler {
         String fullName  = data.get("fullName");
         String phone     = data.get("phone");
         String password  = data.get("password");
-        String otpToken  = data.get("otpToken"); // indicates email was verified
+        String otpToken  = data.get("otpToken"); // "verified" => email was OTP-verified
 
         // ---- Step 1: Basic null check ----
         if (username == null || email == null || password == null || fullName == null) {
@@ -98,7 +102,7 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // ---- Step 2: Validate full name (no fake names) ----
+        // ---- Step 2: Validate full name ----
         String nameError = ValidationUtil.validateFullName(fullName);
         if (nameError != null) {
             sendResponse(exchange, 400, JsonUtil.error(nameError));
@@ -119,13 +123,15 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // ---- Step 5: Validate phone (if provided) ----
-        if (phone != null && !phone.trim().isEmpty()) {
-            String phoneError = ValidationUtil.validatePhone(phone);
-            if (phoneError != null) {
-                sendResponse(exchange, 400, JsonUtil.error(phoneError));
-                return;
-            }
+        // ---- Step 5: Phone is mandatory now (required for OTP login) ----
+        if (phone == null || phone.trim().isEmpty()) {
+            sendResponse(exchange, 400, JsonUtil.error("Phone number is required"));
+            return;
+        }
+        String phoneError = ValidationUtil.validatePhone(phone);
+        if (phoneError != null) {
+            sendResponse(exchange, 400, JsonUtil.error(phoneError));
+            return;
         }
 
         // ---- Step 6: Validate password strength ----
@@ -135,25 +141,48 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // ---- Step 7: Check if email OTP was verified ----
-        // otpToken = email address, used as the OTP key
-        // We check if OTPService has a "verified" marker for this email
-        // (When user successfully verifies OTP, we mark it as verified)
+        // ---- Step 7: Check email OTP verified ----
         if (otpToken == null || !OTPService.isEmailVerified(email)) {
             sendResponse(exchange, 400, JsonUtil.error(
                     "Email not verified. Please verify your email with OTP before registering."));
             return;
         }
 
-        // ---- Step 8: Register ----
-        User newUser = userDAO.register(username, email, fullName, phone, password);
-        if (newUser == null) {
-            sendResponse(exchange, 409, JsonUtil.error("Username or email already exists"));
+        // ---- Step 7.5: Check phone OTP verified ----
+        if (!OTPService.isPhoneVerified(phone)) {
+            sendResponse(exchange, 400, JsonUtil.error(
+                    "Phone not verified. Please verify your phone number with OTP."));
             return;
         }
 
-        // Clear the verified marker after successful registration
+        // ---- Step 8: Check for duplicates (username / email / phone) ----
+        if (userDAO.existsByUsername(username)) {
+            sendResponse(exchange, 409, JsonUtil.error("Username '" + username + "' is already taken."));
+            return;
+        }
+        if (userDAO.existsByEmail(email)) {
+            sendResponse(exchange, 409, JsonUtil.error("An account with this email already exists."));
+            return;
+        }
+        if (userDAO.existsByPhone(phone)) {
+            sendResponse(exchange, 409, JsonUtil.error("An account with this phone number already exists."));
+            return;
+        }
+
+        // ---- Step 9: Register ----
+        User newUser = userDAO.register(username, email, fullName, phone, password);
+        if (newUser == null) {
+            sendResponse(exchange, 409, JsonUtil.error("Registration failed. Please try again."));
+            return;
+        }
+
+        // Mark email + phone as verified in DB
+        userDAO.markEmailVerified(email);
+        userDAO.markPhoneVerified(phone);
+
+        // Clear OTP verified markers
         OTPService.clearVerified(email);
+        OTPService.clearPhoneVerified(phone);
 
         String token = userDAO.createSession(newUser.getId());
         String json = JsonUtil.success(JsonUtil.object(
@@ -166,8 +195,112 @@ public class AuthHandler extends BaseHandler {
     }
 
     // ---------------------------------------------------------------
-    // POST /api/auth/send-otp — generates OTP and "sends" to email
-    // SYLLABUS: Unit IV - Networking concept (email is network-based)
+    // POST /api/auth/check-availability
+    // Checks if username / email / phone is already registered
+    // Body: { "type": "username"|"email"|"phone", "value": "..." }
+    // ---------------------------------------------------------------
+    private void handleCheckAvailability(HttpExchange exchange, String body) throws Exception {
+        Map<String, String> data = parseJson(body);
+        String type  = data.get("type");
+        String value = data.get("value");
+
+        if (type == null || value == null || value.trim().isEmpty()) {
+            sendResponse(exchange, 400, JsonUtil.error("type and value are required"));
+            return;
+        }
+
+        boolean taken;
+        switch (type) {
+            case "username" -> taken = userDAO.existsByUsername(value.trim());
+            case "email"    -> taken = userDAO.existsByEmail(value.trim());
+            case "phone"    -> taken = userDAO.existsByPhone(value.trim());
+            default -> {
+                sendResponse(exchange, 400, JsonUtil.error("Invalid type. Use: username, email, or phone"));
+                return;
+            }
+        }
+
+        sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
+                JsonUtil.field("available", !taken),
+                JsonUtil.field("type", type),
+                JsonUtil.field("value", value.trim())
+        )));
+    }
+
+    // ---------------------------------------------------------------
+    // POST /api/auth/login-phone-otp
+    // Sends OTP to the phone for mobile-number-based login
+    // ---------------------------------------------------------------
+    private void handleSendPhoneLoginOTP(HttpExchange exchange, String body) throws Exception {
+        Map<String, String> data = parseJson(body);
+        String phone = data.get("phone");
+
+        if (phone == null || phone.trim().isEmpty()) {
+            sendResponse(exchange, 400, JsonUtil.error("Phone number is required"));
+            return;
+        }
+        String phoneError = ValidationUtil.validatePhone(phone);
+        if (phoneError != null) {
+            sendResponse(exchange, 400, JsonUtil.error(phoneError));
+            return;
+        }
+
+        // Check the phone exists in DB (can't OTP-login if not registered)
+        User user = userDAO.findByPhone(phone.trim());
+        if (user == null) {
+            sendResponse(exchange, 404, JsonUtil.error("No account found with this phone number."));
+            return;
+        }
+
+        String otp = OTPService.generateOTP("login:phone:" + phone.trim());
+        SMSService.sendOTPSms(phone.trim(), user.getFullName(), otp);
+
+        sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
+                JsonUtil.field("message", "OTP sent to your phone"),
+                JsonUtil.field("phone", phone.trim())
+        )));
+    }
+
+    // ---------------------------------------------------------------
+    // POST /api/auth/verify-phone-login
+    // Verifies OTP and logs in
+    // ---------------------------------------------------------------
+    private void handleVerifyPhoneLogin(HttpExchange exchange, String body) throws Exception {
+        Map<String, String> data = parseJson(body);
+        String phone = data.get("phone");
+        String otp   = data.get("otp");
+
+        if (phone == null || otp == null) {
+            sendResponse(exchange, 400, JsonUtil.error("Phone and OTP are required"));
+            return;
+        }
+
+        String result = OTPService.verifyOTP("login:phone:" + phone.trim(), otp);
+        if ("VALID".equals(result)) {
+            User user = userDAO.findByPhone(phone.trim());
+            if (user == null) {
+                sendResponse(exchange, 404, JsonUtil.error("Account not found"));
+                return;
+            }
+            String token = userDAO.createSession(user.getId());
+            sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
+                    JsonUtil.field("token", token),
+                    JsonUtil.field("userId", user.getId()),
+                    JsonUtil.field("username", user.getUsername()),
+                    JsonUtil.field("fullName", user.getFullName()),
+                    JsonUtil.field("email", user.getEmail())
+            )));
+        } else if ("EXPIRED".equals(result)) {
+            sendResponse(exchange, 400, JsonUtil.error("OTP has expired. Please request a new one."));
+        } else if ("MAX_ATTEMPTS".equals(result)) {
+            sendResponse(exchange, 400, JsonUtil.error("Too many wrong attempts. Please request a new OTP."));
+        } else {
+            sendResponse(exchange, 400, JsonUtil.error("Incorrect OTP. Please try again."));
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // POST /api/auth/send-otp
     // ---------------------------------------------------------------
     private void handleSendOTP(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
@@ -185,7 +318,12 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // Generate OTP and "send" it (console in dev, real email in production)
+        // Duplicate check before sending OTP
+        if (userDAO.existsByEmail(email.trim())) {
+            sendResponse(exchange, 409, JsonUtil.error("An account with this email already exists."));
+            return;
+        }
+
         String otp = OTPService.generateOTP(email);
         EmailService.sendOTPEmail(email, fullName != null ? fullName : "User", otp);
 
@@ -196,7 +334,7 @@ public class AuthHandler extends BaseHandler {
     }
 
     // ---------------------------------------------------------------
-    // POST /api/auth/verify-otp — verifies OTP user entered
+    // POST /api/auth/verify-otp
     // ---------------------------------------------------------------
     private void handleVerifyOTP(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
@@ -208,28 +346,23 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // SYLLABUS: Unit IV - String comparison, Unit III - conditional logic
         String result = OTPService.verifyOTP(email, otp);
 
         switch (result) {
             case "VALID":
-                // Mark this email as verified so registration can proceed
                 OTPService.markEmailVerified(email);
                 sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
                         JsonUtil.field("message", "Email verified successfully!"),
                         JsonUtil.field("verified", true)
                 )));
                 break;
-
             case "EXPIRED":
                 sendResponse(exchange, 400, JsonUtil.error("OTP has expired. Please request a new one."));
                 break;
-
             case "MAX_ATTEMPTS":
                 sendResponse(exchange, 400, JsonUtil.error("Too many wrong attempts. Please request a new OTP."));
                 break;
-
-            default: // INVALID
+            default:
                 sendResponse(exchange, 400, JsonUtil.error("Incorrect OTP. Please try again."));
                 break;
         }
@@ -248,13 +381,8 @@ public class AuthHandler extends BaseHandler {
 
     // ========================================================================
     // OTP Verification Methods (email/phone specific endpoints)
-    // SYLLABUS: Unit III - Packages, Unit IV - Networking
     // ========================================================================
 
-    /**
-     * POST /api/auth/send-email-otp
-     * Sends OTP to user's email for post-registration verification
-     */
     private void handleSendEmailOTP(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
         String email    = data.get("email");
@@ -270,7 +398,6 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // Reuse the existing generateOTP + email sender
         String otp = OTPService.generateOTP(email);
         EmailService.sendOTPEmail(email, userName != null ? userName : "User", otp);
 
@@ -281,10 +408,6 @@ public class AuthHandler extends BaseHandler {
         )));
     }
 
-    /**
-     * POST /api/auth/verify-email-otp
-     * Verifies the OTP sent to email and marks email as verified in DB
-     */
     private void handleVerifyEmailOTP(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
         String email = data.get("email");
@@ -312,10 +435,6 @@ public class AuthHandler extends BaseHandler {
         }
     }
 
-    /**
-     * POST /api/auth/send-phone-otp
-     * Sends OTP to user's phone for verification
-     */
     private void handleSendPhoneOTP(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
         String phone    = data.get("phone");
@@ -331,7 +450,12 @@ public class AuthHandler extends BaseHandler {
             return;
         }
 
-        // Reuse existing generateOTP + SMS sender
+        // Duplicate check — phone must not already be registered
+        if (userDAO.existsByPhone(phone.trim())) {
+            sendResponse(exchange, 409, JsonUtil.error("An account with this phone number already exists."));
+            return;
+        }
+
         String otp = OTPService.generateOTP("phone:" + phone);
         SMSService.sendOTPSms(phone, userName != null ? userName : "User", otp);
 
@@ -342,10 +466,6 @@ public class AuthHandler extends BaseHandler {
         )));
     }
 
-    /**
-     * POST /api/auth/verify-phone-otp
-     * Verifies the OTP sent to phone and marks phone as verified in DB
-     */
     private void handleVerifyPhoneOTP(HttpExchange exchange, String body) throws Exception {
         Map<String, String> data = parseJson(body);
         String phone = data.get("phone");

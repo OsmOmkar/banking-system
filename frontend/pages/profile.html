@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile — JavaBank</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media(max-width:700px){ .profile-grid { grid-template-columns: 1fr; } }
+
+    .profile-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+    .profile-card.danger {
+      border-color: rgba(239,68,68,0.3);
+      background: rgba(239,68,68,0.04);
+    }
+    .profile-card h3 {
+      font-size: 1rem; font-weight: 700; color: #e2e8f0;
+      margin: 0 0 1.2rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .info-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .info-label { font-size: 0.78rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .info-value { font-size: 0.95rem; color: #e2e8f0; font-weight: 500; }
+
+    .badge-verified   { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; font-weight: 700; }
+    .badge-unverified { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; font-weight: 700; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .form-group input {
+      width: 100%; padding: 0.65rem 0.85rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; color: #f1f5f9; font-size: 0.9rem;
+      font-family: 'Inter', sans-serif; transition: all 0.2s; box-sizing: border-box;
+    }
+    .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 8px; border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; transition: all 0.2s; }
+    .btn-blue  { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; }
+    .btn-blue:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-blue:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-red   { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+    .btn-red:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-gray  { background: rgba(255,255,255,0.08); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); }
+
+    .alert { padding: 0.65rem 0.9rem; border-radius: 8px; font-size: 0.83rem; margin-bottom: 0.75rem; }
+    .alert-error   { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .alert-info    { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+    .loader { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* OTP section within card */
+    .otp-inline { margin-top: 0.75rem; }
+    .otp-row-sm { display: flex; gap: 6px; justify-content: flex-start; margin: 0.5rem 0; }
+    .otp-digit-sm {
+      width: 38px; height: 44px; text-align: center; font-size: 1.1rem; font-weight: 700;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: #f1f5f9; font-family: 'Inter', sans-serif; transition: all 0.2s;
+    }
+    .otp-digit-sm:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+    .otp-digit-sm.filled { border-color: #6366f1; }
+
+    /* Delete modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #1e293b; border: 1px solid rgba(239,68,68,0.3); border-radius: 16px; padding: 2rem; max-width: 420px; width: 90%; }
+    .modal-box h3 { color: #fca5a5; font-size: 1.1rem; margin: 0 0 0.75rem; }
+    .modal-box p  { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1rem; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 0.75rem; }
+    .modal-actions button { flex: 1; padding: 0.65rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; font-family: 'Inter', sans-serif; }
+
+    .availability-msg { font-size: 0.75rem; margin-top: 4px; }
+    .availability-msg.ok  { color: #4ade80; }
+    .availability-msg.err { color: #f87171; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarMount"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>👤 My Profile</h1>
+      <p>Manage your account details and security settings</p>
+    </div>
+
+    <!-- Current Info Card -->
+    <div class="card" style="margin-bottom:1.5rem;" id="profileInfoCard">
+      <div class="card-title">📋 Account Information</div>
+      <div id="profileLoading" style="color:#9ca3af;padding:1rem;">Loading...</div>
+      <div id="profileInfo" style="display:none;">
+        <div class="info-row">
+          <span class="info-label">Full Name</span>
+          <span class="info-value" id="piFullName">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Username</span>
+          <span class="info-value" id="piUsername">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email</span>
+          <span class="info-value" id="piEmail">—</span>
+          &nbsp;<span id="piEmailBadge"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Phone</span>
+          <span class="info-value" id="piPhone">—</span>
+          &nbsp;<span id="piPhoneBadge"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Member Since</span>
+          <span class="info-value" id="piCreated">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-grid">
+
+      <!-- Change Username -->
+      <div class="profile-card">
+        <h3>✏️ Change Username</h3>
+        <div id="usernameAlert"></div>
+        <div class="form-group">
+          <label>New Username</label>
+          <input type="text" id="newUsername" placeholder="Enter new username" oninput="checkNewUsername()">
+          <div class="availability-msg" id="usernameAvailMsg"></div>
+        </div>
+        <button class="btn-sm btn-blue" id="updateUnBtn" onclick="updateUsername()">Update Username</button>
+      </div>
+
+      <!-- Change Email -->
+      <div class="profile-card">
+        <h3>📧 Change Email</h3>
+        <div id="emailAlert"></div>
+        <div id="emailStep1">
+          <div class="form-group">
+            <label>New Email Address</label>
+            <input type="email" id="newEmail" placeholder="new@email.com">
+          </div>
+          <button class="btn-sm btn-blue" id="sendEmailOtpBtn" onclick="sendNewEmailOTP()">Send OTP to New Email</button>
+        </div>
+        <div id="emailStep2" style="display:none;" class="otp-inline">
+          <p style="color:#94a3b8;font-size:0.83rem;margin:0 0 0.5rem;">Enter OTP sent to <strong id="newEmailShow" style="color:#60a5fa;"></strong></p>
+          <div class="otp-row-sm">
+            <input class="otp-digit-sm" id="e1" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,null,'e2')" onkeydown="otpSmKey(this,null)">
+            <input class="otp-digit-sm" id="e2" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'e1','e3')" onkeydown="otpSmKey(this,'e1')">
+            <input class="otp-digit-sm" id="e3" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'e2','e4')" onkeydown="otpSmKey(this,'e2')">
+            <input class="otp-digit-sm" id="e4" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'e3','e5')" onkeydown="otpSmKey(this,'e3')">
+            <input class="otp-digit-sm" id="e5" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'e4','e6')" onkeydown="otpSmKey(this,'e4')">
+            <input class="otp-digit-sm" id="e6" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'e5',null)" onkeydown="otpSmKey(this,'e5')">
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+            <button class="btn-sm btn-blue" id="verifyEmailOtpBtn" onclick="verifyNewEmailOTP()">Verify & Update</button>
+            <button class="btn-sm btn-gray" onclick="emailStep1()">← Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change Phone -->
+      <div class="profile-card">
+        <h3>📱 Change Phone Number</h3>
+        <div id="phoneAlert"></div>
+        <div id="phoneStep1">
+          <div class="form-group">
+            <label>New Phone Number</label>
+            <input type="tel" id="newPhone" placeholder="9876543210" maxlength="10">
+          </div>
+          <button class="btn-sm btn-blue" id="sendPhoneOtpBtn" onclick="sendNewPhoneOTP()">Send OTP to New Number</button>
+        </div>
+        <div id="phoneStep2" style="display:none;" class="otp-inline">
+          <p style="color:#94a3b8;font-size:0.83rem;margin:0 0 0.5rem;">Enter OTP sent to <strong id="newPhoneShow" style="color:#60a5fa;"></strong></p>
+          <div class="otp-row-sm">
+            <input class="otp-digit-sm" id="ph1" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,null,'ph2')" onkeydown="otpSmKey(this,null)">
+            <input class="otp-digit-sm" id="ph2" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'ph1','ph3')" onkeydown="otpSmKey(this,'ph1')">
+            <input class="otp-digit-sm" id="ph3" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'ph2','ph4')" onkeydown="otpSmKey(this,'ph2')">
+            <input class="otp-digit-sm" id="ph4" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'ph3','ph5')" onkeydown="otpSmKey(this,'ph3')">
+            <input class="otp-digit-sm" id="ph5" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'ph4','ph6')" onkeydown="otpSmKey(this,'ph4')">
+            <input class="otp-digit-sm" id="ph6" maxlength="1" type="text" inputmode="numeric" oninput="otpSm(this,'ph5',null)" onkeydown="otpSmKey(this,'ph5')">
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+            <button class="btn-sm btn-blue" id="verifyPhoneOtpBtn2" onclick="verifyNewPhoneOTP()">Verify & Update</button>
+            <button class="btn-sm btn-gray" onclick="phoneStep1()">← Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="profile-card danger">
+        <h3>⚠️ Danger Zone</h3>
+        <p style="color:#94a3b8;font-size:0.85rem;margin:0 0 1rem;line-height:1.6;">
+          Permanently deleting your account will remove all your data, accounts, and transaction history.
+          <strong style="color:#f87171;">This action cannot be undone.</strong>
+        </p>
+        <button class="btn-sm btn-red" onclick="showDeleteModal()">🗑️ Delete My Account</button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-box">
+    <h3>🗑️ Permanently Delete Account?</h3>
+    <p>
+      This will permanently delete your JavaBank account, all linked bank accounts, and all transaction history.<br><br>
+      Type <strong style="color:#f87171;">DELETE</strong> to confirm.
+    </p>
+    <div id="deleteAlert"></div>
+    <div class="form-group">
+      <input type="text" id="deleteConfirmInput" placeholder="Type DELETE here" style="border-color:rgba(239,68,68,0.4);">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-gray" onclick="hideDeleteModal()">Cancel</button>
+      <button class="btn-sm btn-red" id="deleteBtn" onclick="deleteAccount()">Delete Forever</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+Auth.requireAuth();
+renderSidebar('profile');
+
+let usernameCheckDebounce = null;
+
+// ─── Load profile ─────────────────────────────────────────
+async function loadProfile() {
+  try {
+    const data = await API.call('/profile');
+    document.getElementById('piFullName').textContent = data.fullName || '—';
+    document.getElementById('piUsername').textContent = '@' + data.username;
+    document.getElementById('piEmail').textContent    = data.email || '—';
+    document.getElementById('piPhone').textContent    = data.phone ? '+91 ' + data.phone : '—';
+    document.getElementById('piCreated').textContent  = data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' }) : '—';
+
+    document.getElementById('piEmailBadge').innerHTML = data.emailVerified
+      ? '<span class="badge-verified">✓ Verified</span>'
+      : '<span class="badge-unverified">✗ Unverified</span>';
+    document.getElementById('piPhoneBadge').innerHTML = data.phoneVerified
+      ? '<span class="badge-verified">✓ Verified</span>'
+      : '<span class="badge-unverified">✗ Unverified</span>';
+
+    document.getElementById('profileLoading').style.display = 'none';
+    document.getElementById('profileInfo').style.display    = 'block';
+  } catch(e) {
+    document.getElementById('profileLoading').textContent = 'Failed to load profile: ' + e.message;
+  }
+}
+
+function showAlert(id, msg, type='error') {
+  document.getElementById(id).innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+// ─── Username availability check ─────────────────────────
+async function checkNewUsername() {
+  const val = document.getElementById('newUsername').value.trim();
+  const msg = document.getElementById('usernameAvailMsg');
+  if (!val || val.length < 4) { msg.textContent = ''; return; }
+  clearTimeout(usernameCheckDebounce);
+  usernameCheckDebounce = setTimeout(async () => {
+    try {
+      const data = await API.call('/auth/check-availability', 'POST', { type: 'username', value: val });
+      msg.textContent = data.available ? '✓ Username available' : '✗ Already taken';
+      msg.className = 'availability-msg ' + (data.available ? 'ok' : 'err');
+    } catch(e) { msg.textContent = ''; }
+  }, 500);
+}
+
+// ─── Update username ──────────────────────────────────────
+async function updateUsername() {
+  const newUsername = document.getElementById('newUsername').value.trim();
+  if (!newUsername) { showAlert('usernameAlert', 'Enter a new username'); return; }
+
+  const btn = document.getElementById('updateUnBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Updating...';
+
+  try {
+    const data = await API.call('/profile/update-username', 'POST', { newUsername });
+    showAlert('usernameAlert', '✅ Username updated to @' + data.newUsername, 'success');
+    document.getElementById('newUsername').value = '';
+    document.getElementById('usernameAvailMsg').textContent = '';
+    loadProfile();
+  } catch(e) {
+    showAlert('usernameAlert', e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = 'Update Username';
+  }
+}
+
+// ─── Change Email ─────────────────────────────────────────
+async function sendNewEmailOTP() {
+  const newEmail = document.getElementById('newEmail').value.trim();
+  if (!newEmail) { showAlert('emailAlert', 'Enter a new email address'); return; }
+
+  const btn = document.getElementById('sendEmailOtpBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Sending...';
+
+  try {
+    await API.call('/profile/update-email', 'POST', { newEmail });
+    document.getElementById('newEmailShow').textContent = newEmail;
+    document.getElementById('emailStep1').style.display = 'none';
+    document.getElementById('emailStep2').style.display = 'block';
+    showAlert('emailAlert', '✅ OTP sent to ' + newEmail, 'success');
+  } catch(e) {
+    showAlert('emailAlert', e.message);
+    btn.disabled = false; btn.innerHTML = 'Send OTP to New Email';
+  }
+}
+
+async function verifyNewEmailOTP() {
+  const otp      = ['e1','e2','e3','e4','e5','e6'].map(id => document.getElementById(id).value).join('');
+  const newEmail = document.getElementById('newEmail').value.trim();
+  if (otp.length !== 6) { showAlert('emailAlert', 'Enter all 6 digits'); return; }
+
+  const btn = document.getElementById('verifyEmailOtpBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Verifying...';
+
+  try {
+    const data = await API.call('/profile/verify-new-email', 'POST', { newEmail, otp });
+    showAlert('emailAlert', '✅ ' + data.message, 'success');
+    emailStep1();
+    document.getElementById('newEmail').value = '';
+    loadProfile();
+  } catch(e) {
+    showAlert('emailAlert', e.message);
+    btn.disabled = false; btn.innerHTML = 'Verify & Update';
+  }
+}
+
+function emailStep1() {
+  document.getElementById('emailStep1').style.display = 'block';
+  document.getElementById('emailStep2').style.display = 'none';
+  document.getElementById('sendEmailOtpBtn').disabled = false;
+  document.getElementById('sendEmailOtpBtn').innerHTML = 'Send OTP to New Email';
+  ['e1','e2','e3','e4','e5','e6'].forEach(id => { const el = document.getElementById(id); el.value=''; el.classList.remove('filled'); });
+}
+
+// ─── Change Phone ─────────────────────────────────────────
+async function sendNewPhoneOTP() {
+  const newPhone = document.getElementById('newPhone').value.trim().replace(/[\s-]/g,'');
+  if (!/^[6-9][0-9]{9}$/.test(newPhone)) { showAlert('phoneAlert', 'Enter a valid 10-digit Indian mobile number'); return; }
+
+  const btn = document.getElementById('sendPhoneOtpBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Sending...';
+
+  try {
+    await API.call('/profile/update-phone', 'POST', { newPhone });
+    document.getElementById('newPhoneShow').textContent = '+91 ' + newPhone;
+    document.getElementById('phoneStep1').style.display = 'none';
+    document.getElementById('phoneStep2').style.display = 'block';
+    showAlert('phoneAlert', '✅ OTP sent to +91 ' + newPhone, 'success');
+  } catch(e) {
+    showAlert('phoneAlert', e.message);
+    btn.disabled = false; btn.innerHTML = 'Send OTP to New Number';
+  }
+}
+
+async function verifyNewPhoneOTP() {
+  const otp      = ['ph1','ph2','ph3','ph4','ph5','ph6'].map(id => document.getElementById(id).value).join('');
+  const newPhone = document.getElementById('newPhone').value.trim().replace(/[\s-]/g,'');
+  if (otp.length !== 6) { showAlert('phoneAlert', 'Enter all 6 digits'); return; }
+
+  const btn = document.getElementById('verifyPhoneOtpBtn2');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Verifying...';
+
+  try {
+    const data = await API.call('/profile/verify-new-phone', 'POST', { newPhone, otp });
+    showAlert('phoneAlert', '✅ ' + data.message, 'success');
+    phoneStep1();
+    document.getElementById('newPhone').value = '';
+    loadProfile();
+  } catch(e) {
+    showAlert('phoneAlert', e.message);
+    btn.disabled = false; btn.innerHTML = 'Verify & Update';
+  }
+}
+
+function phoneStep1() {
+  document.getElementById('phoneStep1').style.display = 'block';
+  document.getElementById('phoneStep2').style.display = 'none';
+  document.getElementById('sendPhoneOtpBtn').disabled = false;
+  document.getElementById('sendPhoneOtpBtn').innerHTML = 'Send OTP to New Number';
+  ['ph1','ph2','ph3','ph4','ph5','ph6'].forEach(id => { const el = document.getElementById(id); el.value=''; el.classList.remove('filled'); });
+}
+
+// ─── Delete Account ───────────────────────────────────────
+function showDeleteModal() { document.getElementById('deleteModal').classList.add('show'); }
+function hideDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('show');
+  document.getElementById('deleteConfirmInput').value = '';
+  document.getElementById('deleteAlert').innerHTML = '';
+}
+
+async function deleteAccount() {
+  const confirmation = document.getElementById('deleteConfirmInput').value.trim();
+  if (confirmation !== 'DELETE') {
+    showAlert('deleteAlert', 'You must type DELETE (in caps) to confirm');
+    return;
+  }
+
+  const btn = document.getElementById('deleteBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Deleting...';
+
+  try {
+    await API.call('/profile/delete-account', 'POST', { confirmation });
+    Auth.clear();
+    alert('Your account has been permanently deleted. Goodbye! 👋');
+    window.location.href = '/index.html';
+  } catch(e) {
+    showAlert('deleteAlert', e.message);
+    btn.disabled = false; btn.innerHTML = 'Delete Forever';
+  }
+}
+
+// ─── Small OTP input helpers ──────────────────────────────
+function otpSm(el, prevId, nextId) {
+  el.value = el.value.replace(/[^0-9]/g, '');
+  if (el.value) { el.classList.add('filled'); if (nextId) document.getElementById(nextId).focus(); }
+  else { el.classList.remove('filled'); }
+}
+function otpSmKey(el, prevId) {
+  if (event.key === 'Backspace' && el.value === '' && prevId) {
+    const prev = document.getElementById(prevId);
+    prev.value = ''; prev.classList.remove('filled'); prev.focus();
+  }
+}
+
+loadProfile();
+</script>
+</body>
+</html>

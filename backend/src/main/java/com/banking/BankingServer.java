@@ -41,15 +41,30 @@ public class BankingServer {
         // -------------------------------------------------------
         // Auth endpoints
         // -------------------------------------------------------
-        server.createContext("/api/auth/login",           new AuthHandler());
-        server.createContext("/api/auth/register",        new AuthHandler());
-        server.createContext("/api/auth/logout",          new AuthHandler());
-        server.createContext("/api/auth/send-otp",        new AuthHandler()); // verify email before registration
-        server.createContext("/api/auth/verify-otp",      new AuthHandler()); // verify OTP before registration
-        server.createContext("/api/auth/send-email-otp",  new AuthHandler()); // NEW: post-registration email OTP
-        server.createContext("/api/auth/verify-email-otp",new AuthHandler()); // NEW: verify email OTP
-        server.createContext("/api/auth/send-phone-otp",  new AuthHandler()); // NEW: phone OTP
-        server.createContext("/api/auth/verify-phone-otp",new AuthHandler()); // NEW: verify phone OTP
+        server.createContext("/api/auth/login",              new AuthHandler());
+        server.createContext("/api/auth/register",             new AuthHandler());
+        server.createContext("/api/auth/logout",               new AuthHandler());
+        server.createContext("/api/auth/send-otp",             new AuthHandler());
+        server.createContext("/api/auth/verify-otp",           new AuthHandler());
+        server.createContext("/api/auth/send-email-otp",       new AuthHandler());
+        server.createContext("/api/auth/verify-email-otp",     new AuthHandler());
+        server.createContext("/api/auth/send-phone-otp",       new AuthHandler());
+        server.createContext("/api/auth/verify-phone-otp",     new AuthHandler());
+        server.createContext("/api/auth/login-phone-otp",      new AuthHandler()); // Mobile OTP login - send OTP
+        server.createContext("/api/auth/verify-phone-login",   new AuthHandler()); // Mobile OTP login - verify
+        server.createContext("/api/auth/check-availability",   new AuthHandler()); // Check username/email/phone taken
+
+        // -------------------------------------------------------
+        // Profile endpoints (require auth)
+        // -------------------------------------------------------
+        ProfileHandler profileHandler = new ProfileHandler();
+        server.createContext("/api/profile",                   profileHandler); // GET profile
+        server.createContext("/api/profile/update-username",   profileHandler); // POST change username
+        server.createContext("/api/profile/update-email",      profileHandler); // POST initiate email change
+        server.createContext("/api/profile/verify-new-email",  profileHandler); // POST verify new email OTP
+        server.createContext("/api/profile/update-phone",      profileHandler); // POST initiate phone change
+        server.createContext("/api/profile/verify-new-phone",  profileHandler); // POST verify new phone OTP
+        server.createContext("/api/profile/delete-account",    profileHandler); // POST delete account
 
         // -------------------------------------------------------
         // Account & transaction endpoints

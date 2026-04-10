@@ -55,7 +55,6 @@ public class UserDAO {
 
             ps.setInt(1, userId);
             ps.setString(2, token);
-            // Session valid for 24 hours
             ps.setTimestamp(3, new Timestamp(System.currentTimeMillis() + 86400000L));
             ps.executeUpdate();
             return token;
@@ -124,7 +123,6 @@ public class UserDAO {
         user.setPhone(rs.getString("phone"));
         user.setCreatedAt(rs.getTimestamp("created_at"));
         user.setActive(rs.getBoolean("is_active"));
-        // Read KYC verification columns if they exist in the result set
         try { user.setEmailVerified(rs.getBoolean("email_verified")); } catch (SQLException ignored) {}
         try { user.setPhoneVerified(rs.getBoolean("phone_verified")); } catch (SQLException ignored) {}
         try { user.setKycVerified(rs.getBoolean("kyc_verified")); } catch (SQLException ignored) {}
@@ -133,12 +131,8 @@ public class UserDAO {
 
     // ========================================================================
     // Verification Methods
-    // SYLLABUS: Unit V - JDBC UPDATE operations
     // ========================================================================
 
-    /**
-     * Marks user's email as verified in the database.
-     */
     public boolean markEmailVerified(String email) {
         String sql = "UPDATE users SET email_verified = TRUE WHERE LOWER(email) = LOWER(?)";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -156,9 +150,6 @@ public class UserDAO {
         return false;
     }
 
-    /**
-     * Marks user's phone as verified in the database.
-     */
     public boolean markPhoneVerified(String phone) {
         String cleanPhone = phone.replaceAll("[\\s-]", "");
         String sql = "UPDATE users SET phone_verified = TRUE WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = ?";
@@ -177,9 +168,6 @@ public class UserDAO {
         return false;
     }
 
-    /**
-     * Finds an active user by email address.
-     */
     public User findByEmail(String email) {
         String sql = "SELECT * FROM users WHERE LOWER(email) = LOWER(?) AND is_active = TRUE";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -192,5 +180,137 @@ public class UserDAO {
             System.err.println("[UserDAO] Error finding by email: " + e.getMessage());
         }
         return null;
+    }
+
+    // ========================================================================
+    // Duplicate / Availability checks (registration + profile edit)
+    // ========================================================================
+
+    public boolean existsByUsername(String username) {
+        String sql = "SELECT 1 FROM users WHERE LOWER(username) = LOWER(?) AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            return ps.executeQuery().next();
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] existsByUsername error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean existsByEmail(String email) {
+        String sql = "SELECT 1 FROM users WHERE LOWER(email) = LOWER(?) AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            return ps.executeQuery().next();
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] existsByEmail error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean existsByPhone(String phone) {
+        String cleanPhone = phone.replaceAll("[\\s-]", "");
+        String sql = "SELECT 1 FROM users WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = ? AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, cleanPhone);
+            return ps.executeQuery().next();
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] existsByPhone error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // ========================================================================
+    // Phone-based login
+    // ========================================================================
+
+    public User findByPhone(String phone) {
+        String cleanPhone = phone.replaceAll("[\\s-]", "");
+        String sql = "SELECT * FROM users WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = ? AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, cleanPhone);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return mapRow(rs);
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] findByPhone error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // ========================================================================
+    // Profile update methods
+    // ========================================================================
+
+    public boolean updateUsername(int userId, String newUsername) {
+        String sql = "UPDATE users SET username = ? WHERE id = ? AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newUsername);
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] updateUsername error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean updateEmail(int userId, String newEmail) {
+        // Also marks email_verified = TRUE since we just OTP-verified the new email
+        String sql = "UPDATE users SET email = ?, email_verified = TRUE WHERE id = ? AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newEmail);
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] updateEmail error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean updatePhone(int userId, String newPhone) {
+        // Also marks phone_verified = TRUE since we just OTP-verified the new phone
+        String sql = "UPDATE users SET phone = ?, phone_verified = TRUE WHERE id = ? AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newPhone);
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] updatePhone error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // ========================================================================
+    // Account deletion (soft delete)
+    // ========================================================================
+
+    public boolean deactivateUser(int userId) {
+        String deleteSessions = "DELETE FROM sessions WHERE user_id = ?";
+        String deactivate     = "UPDATE users SET is_active = FALSE WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps1 = conn.prepareStatement(deleteSessions);
+                 PreparedStatement ps2 = conn.prepareStatement(deactivate)) {
+                ps1.setInt(1, userId);
+                ps1.executeUpdate();
+                ps2.setInt(1, userId);
+                int rows = ps2.executeUpdate();
+                conn.commit();
+                System.out.println("[UserDAO] Deactivated user id=" + userId);
+                return rows > 0;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] deactivateUser error: " + e.getMessage());
+        }
+        return false;
     }
 }
