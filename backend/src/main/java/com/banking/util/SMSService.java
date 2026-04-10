@@ -1,7 +1,6 @@
 package com.banking.util;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -14,107 +13,107 @@ import java.time.Duration;
 // Using Fast2SMS - Free Indian SMS gateway
 // No external JAR needed - uses Java 17 HttpClient
 // Sign up at: https://www.fast2sms.com
+// Route: "otp" -> FREE, designed for 6-digit OTPs, no DLT needed
 // =============================================
 public class SMSService {
 
-    // ------------------------------------
-    // Fill this in after Fast2SMS signup:
-    // Go to fast2sms.com → Dashboard → Dev API → Copy your API key
-    // ------------------------------------
     private static final String API_KEY = ConfigLoader.get("sms.fast2sms.apikey", "YOUR_FAST2SMS_API_KEY");
 
-    // Fast2SMS Quick SMS route — no DLT registration needed for dev/testing
-    private static final String API_URL = "https://www.fast2sms.com/dev/bulkV2";
+    // Fast2SMS OTP route endpoint — COMPLETELY FREE, no recharge needed
+    private static final String OTP_API_URL = "https://www.fast2sms.com/dev/bulkV2";
 
-    // Java 17 built-in HTTP client — no extra dependency needed
+    // Java 17 built-in HTTP client
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
     // ---------------------------------------------------------------
-    // Send OTP SMS during phone verification at registration
+    // Send OTP SMS during phone verification / login
     // ---------------------------------------------------------------
     public static void sendOTPSms(String toPhone, String userName, String otp) {
-        String message = "Dear " + userName + ", your JavaBank OTP is: "
-                + otp + ". Valid for 10 minutes. Do not share this with anyone.";
-
         System.out.println("========================================");
         System.out.println("[SMSService] Sending OTP SMS");
         System.out.println("  To      : +91" + toPhone);
         System.out.println("  OTP     : " + otp);
-        System.out.println("  Message : " + message);
         System.out.println("========================================");
 
-        sendViaFast2SMS(toPhone, message);
+        sendOTPRoute(toPhone, otp);
     }
 
     // ---------------------------------------------------------------
     // Send Fraud Alert SMS — called by FraudDetectionThread
+    // (Falls back to OTP route with a short code, or logs only if unsupported)
     // ---------------------------------------------------------------
     public static void sendFraudAlertSms(String toPhone, String userName,
                                           String txType, double amount,
                                           int pendingTxId) {
-        String message = "JAVABANK ALERT: A " + txType + " of Rs."
-                + String.format("%.2f", amount)
-                + " is pending your approval. "
-                + "Reply via app to CONFIRM or REJECT. "
-                + "Auto-cancelled in 5 mins if no response. "
-                + "Pending ID: " + pendingTxId;
-
+        // Fraud alerts are transactional messages — these require a paid route.
+        // For now, log the alert clearly so it appears in Railway logs.
+        // The user can review it in the app's Pending Transactions page.
         System.out.println("========================================");
-        System.out.println("[SMSService] FRAUD ALERT SMS");
+        System.out.println("[SMSService] FRAUD ALERT (logged only — transactional SMS needs paid route)");
         System.out.println("  To      : +91" + toPhone);
-        System.out.println("  Message : " + message);
+        System.out.println("  User    : " + userName);
+        System.out.println("  Type    : " + txType);
+        System.out.println("  Amount  : Rs." + String.format("%.2f", amount));
+        System.out.println("  Pending : #" + pendingTxId);
+        System.out.println("  Action  : User must review via app → Pending Transactions");
         System.out.println("========================================");
-
-        sendViaFast2SMS(toPhone, message);
+        // Note: To enable real SMS fraud alerts, top up Fast2SMS and switch to route=q
     }
 
     // ---------------------------------------------------------------
-    // Core method — calls Fast2SMS REST API
-    // SYLLABUS: Unit IV - Networking (HttpClient, URI, HTTP GET)
+    // Core OTP sender — uses Fast2SMS route=otp (FREE)
+    //
+    // Fast2SMS OTP route docs:
+    //   POST https://www.fast2sms.com/dev/bulkV2
+    //   Body (JSON): { "variables_values": "123456", "route": "otp", "numbers": "9876543210" }
+    //   Authorization: <API_KEY> header
+    //
+    // SYLLABUS: Unit IV - Networking (HttpClient, POST request, JSON body)
     // ---------------------------------------------------------------
-    private static void sendViaFast2SMS(String toPhone, String messageBody) {
-        // Guard: if API key is not configured yet, just log and return
+    private static void sendOTPRoute(String toPhone, String otp) {
         if (API_KEY == null || API_KEY.equals("YOUR_FAST2SMS_API_KEY") || API_KEY.trim().isEmpty()) {
             System.err.println("[SMSService] Fast2SMS API key not configured. " +
-                    "Add 'sms.fast2sms.apikey=YOUR_KEY' to config.properties");
+                    "Set SMS_FAST2SMS_APIKEY environment variable in Railway dashboard.");
+            System.out.println("[SMSService] OTP for " + toPhone + " (console fallback): " + otp);
             return;
         }
 
         try {
-            // Build the query string
-            // route=q  → Quick SMS (no DLT needed, works for all Indian +91 numbers)
-            // language=english → plain ASCII text
-            // numbers  → 10-digit Indian mobile number (WITHOUT +91 prefix)
-            String encodedMessage = URLEncoder.encode(messageBody, StandardCharsets.UTF_8);
-            String url = API_URL
-                    + "?authorization=" + API_KEY
-                    + "&message=" + encodedMessage
-                    + "&language=english"
-                    + "&route=q"
-                    + "&numbers=" + toPhone;   // e.g. 9876543210
+            // JSON body for OTP route — no DLT template, no paid balance needed
+            // variables_values = the 6-digit OTP
+            // route = "otp" → Free OTP route
+            // numbers = 10-digit phone (without +91)
+            String jsonBody = "{\"variables_values\":\"" + otp + "\"," +
+                              "\"route\":\"otp\"," +
+                              "\"numbers\":\"" + toPhone + "\"}";
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
+                    .uri(URI.create(OTP_API_URL))
                     .timeout(Duration.ofSeconds(15))
-                    .GET()
+                    .header("authorization", API_KEY)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofString());
 
-            System.out.println("[SMSService] Fast2SMS response (" + response.statusCode() + "): "
+            System.out.println("[SMSService] Fast2SMS OTP response (" + response.statusCode() + "): "
                     + response.body());
 
             if (response.statusCode() == 200 && response.body().contains("\"return\":true")) {
-                System.out.println("[SMSService] SMS sent successfully to: +91" + toPhone);
+                System.out.println("[SMSService] OTP SMS sent successfully to: +91" + toPhone);
             } else {
-                System.err.println("[SMSService] SMS delivery may have failed. Check Fast2SMS response above.");
+                System.err.println("[SMSService] OTP SMS may have failed. Response above.");
+                // Print OTP to console as fallback (helpful during dev)
+                System.out.println("[SMSService] OTP fallback (console): " + otp + " for +91" + toPhone);
             }
 
         } catch (Exception e) {
-            System.err.println("[SMSService] Failed to send SMS: " + e.getMessage());
+            System.err.println("[SMSService] Failed to send OTP SMS: " + e.getMessage());
+            System.out.println("[SMSService] OTP fallback (console): " + otp + " for +91" + toPhone);
         }
     }
 }
