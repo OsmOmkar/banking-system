@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["jdk17", "curl"]
+nixPkgs = ["jdk21", "curl"]
 
 [phases.build]
 cmds = ["bash build.sh"]
 
 [start]
-cmd = "java -cp out:lib/postgresql.jar com.banking.BankingServer"
+cmd = "java -cp 'out:lib/postgresql.jar:lib/javax.mail.jar:lib/activation.jar' com.banking.BankingServer"
