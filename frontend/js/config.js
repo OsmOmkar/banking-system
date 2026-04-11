@@ -25,6 +25,8 @@ const Auth = {
     isLoggedIn: () => !!localStorage.getItem('token'),
     requireAuth: () => {
         if (!localStorage.getItem('token')) {
+            // Save full URL so we can navigate back after login (e.g. UPI QR deep link)
+            sessionStorage.setItem('loginRedirect', window.location.href);
             window.location.href = '/';
         }
     }

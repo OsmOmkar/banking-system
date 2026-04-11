@@ -108,7 +108,7 @@ public class PendingTransactionHandler extends BaseHandler {
 
         // User confirmed → complete the transaction now
         try {
-            bankingService.completeHeldTransaction(pt);
+            double balanceAfter = bankingService.completeHeldTransaction(pt);
             pendingDAO.updateStatus(pendingId, Status.CONFIRMED);
 
             System.out.println("[PendingHandler] ✅ Transaction ID " + pendingId
@@ -124,7 +124,8 @@ public class PendingTransactionHandler extends BaseHandler {
                         txType + " (Confirmed)",
                         pt.getAmount(),
                         String.valueOf(pendingId),
-                        0, pt.getDescription(),
+                        balanceAfter,          // REAL balance after
+                        pt.getDescription(),
                         pt.getToAccountNumber());
                 }
                 if (user.getPhone() != null && !user.getPhone().isEmpty()) {

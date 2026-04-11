@@ -653,7 +653,9 @@
     try {
       const data = await API.call('/auth/login', 'POST', { username, password });
       Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName, email: data.email });
-      window.location.href = '/pages/dashboard.html';
+      const redir = sessionStorage.getItem('loginRedirect');
+      sessionStorage.removeItem('loginRedirect');
+      window.location.href = redir || '/pages/dashboard.html';
     } catch (e) {
       showAlert('loginAlert', e.message);
       btn.disabled = false; btn.innerHTML = 'Login →';
@@ -698,7 +700,9 @@
     try {
       const data = await API.call('/auth/verify-phone-login', 'POST', { phone, otp });
       Auth.setAuth(data.token, { userId: data.userId, username: data.username, fullName: data.fullName, email: data.email });
-      window.location.href = '/pages/dashboard.html';
+      const redir2 = sessionStorage.getItem('loginRedirect');
+      sessionStorage.removeItem('loginRedirect');
+      window.location.href = redir2 || '/pages/dashboard.html';
     } catch (e) {
       showAlert('loginAlert', e.message);
       btn.disabled = false; btn.innerHTML = 'Verify & Login';

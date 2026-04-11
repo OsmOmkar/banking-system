@@ -132,20 +132,28 @@ public class BankingService implements TransactionProcessor,
             PendingTransaction saved = pendingDAO.save(pt);
 
             if (saved != null) {
-                // Send notifications (email + SMS)
-                if (owner != null) {
-                    EmailService.sendFraudAlertEmail(owner.getEmail(), owner.getFullName(),
-                            "WITHDRAWAL", amount, String.valueOf(saved.getId()));
-                    if (owner.getPhone() != null) {
-                        SMSService.sendFraudAlertSms(owner.getPhone(), owner.getFullName(),
-                                "WITHDRAWAL", amount, saved.getId());
+                // Save fraud alerts to DB (using pending ID as transaction reference)
+                try {
+                    for (FraudAlert fa : preAlerts) {
+                        fa.setTransactionId(saved.getId());
+                        fraudAlertDAO.save(fa);
                     }
+                } catch (Exception alertSaveEx) {
+                    System.err.println("[BankingService] Fraud alert save error: " + alertSaveEx.getMessage());
+                }
+
+                // Send HELD notification with CORRECT amount
+                if (owner != null) {
+                    EmailService.sendTransactionHeldEmail(owner.getEmail(), owner.getFullName(),
+                            "WITHDRAWAL", amount, saved.getId(),
+                            topAlert != null ? topAlert.getDescription() : "Suspicious withdrawal detected");
+                    SMSService.sendTransactionSms(owner.getPhone() != null ? owner.getPhone() : "",
+                            owner.getFullName(), "WITHDRAWAL", amount, "HELD", null);
                 }
 
                 System.out.println("[BankingService] 🚨 FRAUD HOLD: Withdrawal of ₹" + amount
                         + " held for confirmation. Pending ID: " + saved.getId());
 
-                // Throw special exception so the handler knows it's HELD (not blocked)
                 throw new FraudDetectedException("TRANSACTION_HELD:" + saved.getId()
                         + ":Transaction flagged as suspicious. A confirmation request has been sent "
                         + "to your registered email and phone. You have 5 minutes to confirm or reject. "
@@ -229,13 +237,23 @@ public class BankingService implements TransactionProcessor,
             PendingTransaction saved = pendingDAO.save(pt);
 
             if (saved != null) {
-                if (owner != null) {
-                    EmailService.sendFraudAlertEmail(owner.getEmail(), owner.getFullName(),
-                            "TRANSFER to " + toAccountNumber, amount, String.valueOf(saved.getId()));
-                    if (owner.getPhone() != null) {
-                        SMSService.sendFraudAlertSms(owner.getPhone(), owner.getFullName(),
-                                "TRANSFER", amount, saved.getId());
+                // Save fraud alerts to DB
+                try {
+                    for (FraudAlert fa : preAlerts) {
+                        fa.setTransactionId(saved.getId());
+                        fraudAlertDAO.save(fa);
                     }
+                } catch (Exception alertSaveEx) {
+                    System.err.println("[BankingService] Fraud alert save error: " + alertSaveEx.getMessage());
+                }
+
+                // Send HELD notification with CORRECT amount
+                if (owner != null) {
+                    EmailService.sendTransactionHeldEmail(owner.getEmail(), owner.getFullName(),
+                            "TRANSFER to " + toAccountNumber, amount, saved.getId(),
+                            topAlert != null ? topAlert.getDescription() : "Suspicious transfer detected");
+                    SMSService.sendTransactionSms(owner.getPhone() != null ? owner.getPhone() : "",
+                            owner.getFullName(), "TRANSFER", amount, "HELD", null);
                 }
 
                 System.out.println("[BankingService] 🚨 FRAUD HOLD: Transfer of ₹" + amount
@@ -282,7 +300,7 @@ public class BankingService implements TransactionProcessor,
     // ---------------------------------------------------------------
     // Called by PendingTransactionHandler when user CONFIRMS a held tx
     // ---------------------------------------------------------------
-    public void completeHeldTransaction(PendingTransaction pt)
+    public double completeHeldTransaction(PendingTransaction pt)
             throws InvalidAmountException, InsufficientFundsException, AccountNotFoundException {
 
         String type = pt.getTransactionType();
@@ -303,6 +321,7 @@ public class BankingService implements TransactionProcessor,
             txDAO.save(tx);
 
             System.out.println("[BankingService] ✅ Held WITHDRAWAL completed: ₹" + pt.getAmount());
+            return account.getBalance(); // balance after withdrawal
 
         } else if ("TRANSFER".equals(type)) {
             Account from = accountDAO.findById(pt.getAccountId());
@@ -327,7 +346,9 @@ public class BankingService implements TransactionProcessor,
 
             System.out.println("[BankingService] ✅ Held TRANSFER completed: ₹" + pt.getAmount()
                     + " → " + pt.getToAccountNumber());
+            return from.getBalance(); // balance after transfer (sender's balance)
         }
+        return 0.0;
     }
 
     // ---------------------------------------------------------------

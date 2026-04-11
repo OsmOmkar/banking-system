@@ -19,6 +19,9 @@ function renderSidebar(activePage) {
         <a class="nav-item ${activePage==='transfer'?'active':''}" href="transfer.html">
           <span class="icon">🔄</span> Transfer Money
         </a>
+        <a class="nav-item ${activePage==='upi'?'active':''}" href="upi.html">
+          <span class="icon">📱</span> UPI
+        </a>
         <a class="nav-item ${activePage==='fraud'?'active':''}" href="fraud.html">
           <span class="icon">🚨</span> Fraud Alerts
         </a>

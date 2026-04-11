@@ -122,6 +122,20 @@ public class BankingServer {
         server.createContext("/api/pending/confirm", pendingHandler); // POST: confirm
         server.createContext("/api/pending/reject",  pendingHandler); // POST: reject
 
+        // -------------------------------------------------------
+        // UPI endpoints
+        // -------------------------------------------------------
+        UpiHandler upiHandler = new UpiHandler(bankingService);
+        server.createContext("/api/upi/profile",                 upiHandler); // GET: user's UPI profile
+        server.createContext("/api/upi/setup",                   upiHandler); // POST: setup UPI
+        server.createContext("/api/upi/check-id",               upiHandler); // GET: check UPI ID availability
+        server.createContext("/api/upi/lookup",                  upiHandler); // GET: lookup recipient by UPI ID
+        server.createContext("/api/upi/pay",                     upiHandler); // POST: make UPI payment
+        server.createContext("/api/upi/transactions",            upiHandler); // GET: UPI transaction history
+        server.createContext("/api/upi/change-pin/send-otp",    upiHandler); // POST: send OTP for PIN change
+        server.createContext("/api/upi/change-pin/verify-otp",  upiHandler); // POST: verify OTP
+        server.createContext("/api/upi/change-pin",             upiHandler); // POST: set new PIN
+
         server.setExecutor(Executors.newFixedThreadPool(10));
         server.start();
         System.out.println("[BankingServer] Server running on port " + port);

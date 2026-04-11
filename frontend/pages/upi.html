@@ -4,240 +4,1031 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UPI — JavaBank</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    .upi-card {
-        background: linear-gradient(135deg, #7c3aed, #4f46e5);
-        color: white;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 16px;
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f0f13; --surface:#1a1a24; --surface2:#24243a;
+      --upi-purple:#7c3aed; --upi-blue:#2563eb; --upi-green:#16a34a;
+      --upi-red:#dc2626; --upi-gold:#f59e0b;
+      --text:#f1f5f9; --muted:#94a3b8; --border:#2d2d45;
+      --grad: linear-gradient(135deg,#7c3aed,#2563eb);
     }
-    .upi-id-display {
-        font-size: 1.3rem;
-        font-weight: 700;
-        letter-spacing: .05em;
-        margin: 8px 0;
-        padding: 10px 16px;
-        background: rgba(255,255,255,0.15);
-        border-radius: 8px;
-        display: inline-block;
-    }
-    .qr-box {
-        background: white;
-        padding: 16px;
-        border-radius: 12px;
-        display: inline-block;
-        margin-top: 12px;
-    }
-    .recipient-card {
-        padding: 16px;
-        background: #f0fdf4;
-        border: 2px solid #86efac;
-        border-radius: 10px;
-        margin-bottom: 16px;
-        display: none;
-    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+    .screen{display:none;min-height:100vh;animation:fadeIn .25s ease}
+    .screen.active{display:flex;flex-direction:column}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    .topbar{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+    .topbar .back-btn{background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:4px;border-radius:8px;transition:.2s}
+    .topbar .back-btn:hover{background:var(--surface2);color:var(--text)}
+    .topbar h2{font-size:1.1rem;font-weight:600}
+    .upi-logo{display:flex;align-items:center;gap:6px}
+    .logo-icon{background:var(--grad);border-radius:10px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:1rem}
+    .content-area{flex:1;padding:20px;max-width:480px;margin:0 auto;width:100%}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+    .card-title{font-size:.85rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
+
+    .step-indicator{display:flex;gap:8px;justify-content:center;margin-bottom:28px}
+    .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:.3s}
+    .step-dot.active{background:var(--upi-purple);width:24px;border-radius:4px}
+    .step-dot.done{background:var(--upi-green)}
+
+    .form-group{margin-bottom:16px}
+    label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px;font-weight:500}
+    input,select{width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:.95rem;font-family:inherit;outline:none;transition:.2s}
+    input:focus,select:focus{border-color:var(--upi-purple);box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+    input::placeholder{color:var(--muted)}
+    select option{background:var(--surface)}
+    .upi-id-row{display:flex;align-items:center;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;transition:.2s}
+    .upi-id-row:focus-within{border-color:var(--upi-purple);box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+    .upi-id-row input{border:none;background:transparent;box-shadow:none;flex:1;border-radius:0}
+    .upi-id-row input:focus{border-color:transparent;box-shadow:none}
+    .upi-suffix{padding:0 14px;color:var(--muted);font-size:.9rem;white-space:nowrap;border-left:1px solid var(--border)}
+    .upi-avail{font-size:.8rem;margin-top:6px;height:18px;display:flex;align-items:center;gap:5px}
+    .upi-avail.ok{color:var(--upi-green)}.upi-avail.err{color:var(--upi-red)}
+
+    .btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:.2s;font-family:inherit}
+    .btn-primary{background:var(--grad);color:#fff}
+    .btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+    .btn-outline:hover{border-color:var(--upi-purple);color:var(--upi-purple)}
+
+    .pin-circles{display:flex;gap:20px;justify-content:center;margin:32px 0 28px}
+    .pin-circle{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);transition:.2s}
+    .pin-circle.filled{background:var(--upi-purple);border-color:var(--upi-purple);transform:scale(1.15)}
+
+    .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:260px;margin:0 auto}
+    .numpad-key{background:var(--surface2);border:none;color:var(--text);font-size:1.3rem;font-weight:600;height:56px;border-radius:50%;cursor:pointer;transition:.15s;font-family:inherit;display:flex;align-items:center;justify-content:center}
+    .numpad-key:hover{background:var(--surface);transform:scale(1.05)}
+    .numpad-key:active{transform:scale(.95)}
+    .numpad-key.bksp{font-size:1rem;color:var(--muted)}
+    .numpad-key.empty-key{visibility:hidden}
+
+    .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .option-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:.25s;text-align:center}
+    .option-card:hover{border-color:var(--upi-purple);transform:translateY(-2px);box-shadow:0 8px 24px rgba(124,58,237,.15)}
+    .option-card .opt-icon{font-size:2rem;margin-bottom:10px}
+    .option-card .opt-label{font-size:.9rem;font-weight:600;color:var(--text)}
+    .option-card .opt-sub{font-size:.75rem;color:var(--muted);margin-top:4px}
+
+    .upi-banner{background:var(--grad);border-radius:16px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden}
+    .upi-banner::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+    .upi-banner .upi-id-text{font-size:1.2rem;font-weight:700;word-break:break-all}
+    .upi-banner .upi-sub{font-size:.8rem;opacity:.75;margin-top:4px}
+
+    .tab-row{display:flex;background:var(--surface2);border-radius:10px;padding:4px;margin-bottom:20px;gap:4px}
+    .tab-btn{flex:1;padding:10px;border:none;border-radius:8px;background:transparent;color:var(--muted);font-size:.9rem;font-weight:500;cursor:pointer;transition:.2s;font-family:inherit}
+    .tab-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+    .scanner-box{background:#000;border-radius:16px;overflow:hidden;aspect-ratio:1;position:relative;max-width:280px;margin:0 auto 20px}
+    .scanner-box video{width:100%;height:100%;object-fit:cover}
+    .scanner-frame{position:absolute;inset:8%;border:2px solid var(--upi-purple);border-radius:8px;pointer-events:none}
+    .scanner-line{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--upi-purple),transparent);animation:scanLine 2s linear infinite}
+    @keyframes scanLine{0%{top:0}100%{top:100%}}
+    #scanCanvas{display:none}
+
+    .recipient-found{background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.3);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    .recipient-avatar{width:44px;height:44px;background:var(--grad);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;flex-shrink:0}
+    .recipient-name{font-weight:600;font-size:1rem}
+    .recipient-upi{font-size:.8rem;color:var(--muted)}
+
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end;justify-content:center}
+    .overlay.open{display:flex}
+    .bottom-sheet{background:var(--surface);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px;animation:slideUp .3s ease}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .bs-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
+    .bs-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .bs-total-label{font-size:.9rem;color:var(--muted);font-weight:500}
+    .bs-total-amount{font-size:1.5rem;font-weight:800}
+    .bank-option{background:var(--surface2);border:1.5px solid transparent;border-radius:12px;padding:14px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .bank-option.selected{border-color:var(--upi-purple)}
+    .bank-icon{width:40px;height:40px;background:var(--grad);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+    .bank-info .bank-name{font-weight:600;font-size:.95rem}
+    .bank-info .bank-acc{font-size:.78rem;color:var(--muted)}
+
+    .pin-entry-body{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px}
+    .pin-pay-amount{text-align:center;margin:16px 0 8px}
+    .pin-pay-amount .label{font-size:.85rem;color:var(--muted);margin-bottom:4px}
+    .pin-pay-amount .amt{font-size:2.2rem;font-weight:800}
+    .pin-recipient{font-size:.9rem;color:var(--muted);text-align:center;margin-bottom:24px}
+    .pin-bank-info{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 20px;text-align:center;margin-bottom:16px;width:100%;max-width:320px}
+    .pin-bank-type{font-size:.75rem;color:var(--muted)}
+    .pin-bank-name{font-size:.95rem;font-weight:600;margin-top:2px}
+    .pin-entry-label{font-size:.85rem;color:var(--muted);margin-bottom:12px;text-align:center}
+    #pinPayBtn{margin-top:20px;width:180px}
+
+    #processingScreen{background:var(--bg);align-items:center;justify-content:center}
+    .processing-inner{text-align:center}
+    .proc-spinner{width:70px;height:70px;border:4px solid var(--border);border-top-color:var(--upi-purple);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .proc-title{font-size:1.3rem;font-weight:700;margin-bottom:8px}
+    .proc-sub{font-size:.9rem;color:var(--muted)}
+
+    .tx-item{background:var(--surface2);border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:10px}
+    .tx-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+    .tx-icon.out{background:rgba(220,38,38,.15)}.tx-icon.in{background:rgba(22,163,74,.15)}
+    .tx-info{flex:1;min-width:0}
+    .tx-desc{font-size:.9rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tx-date{font-size:.75rem;color:var(--muted);margin-top:2px}
+    .tx-amount{font-weight:700;font-size:1rem;flex-shrink:0}
+    .tx-amount.out{color:var(--upi-red)}.tx-amount.in{color:var(--upi-green)}
+    .empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+    .empty-icon{font-size:3rem;margin-bottom:12px}
+
+    .qr-wrapper{background:white;padding:20px;border-radius:16px;display:inline-block;margin:0 auto 16px}
+
+    .otp-input-row{display:flex;gap:10px;justify-content:center;margin:20px 0}
+    .otp-box{width:46px;height:52px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;text-align:center;font-size:1.4rem;font-weight:700;color:var(--text);outline:none;font-family:inherit;transition:.2s}
+    .otp-box:focus{border-color:var(--upi-purple)}
+    .hidden-validator{background:rgba(220,38,38,.12);border:1px solid var(--upi-red);border-radius:10px;padding:10px 14px;font-size:.85rem;color:#fca5a5;display:none;margin-top:10px}
+    .badge-purple{background:rgba(124,58,237,.2);color:#a78bfa;padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:600}
+
+    .alert{padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:.9rem;display:none}
+    .alert.err{background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);color:#fca5a5}
+    .alert.ok{background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.3);color:#86efac}
+    .alert.show{display:block}
+
+    #loadSplash{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
+    .splash-spin{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--upi-purple);border-radius:50%;animation:spin 1s linear infinite}
+    .splash-txt{color:var(--muted);font-size:.9rem}
   </style>
 </head>
 <body>
-<div class="app-layout">
-  <div id="sidebarMount"></div>
-  <main class="main-content">
-    <div class="page-header">
-      <h1>📱 UPI Payments</h1>
-      <p>Send and receive money instantly using UPI</p>
-    </div>
 
-    <div id="alertBox"></div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
-
-      <!-- LEFT: My UPI IDs -->
-      <div>
-        <div class="card">
-          <div class="card-title">💳 My UPI IDs</div>
-          <div id="myUpiList">
-            <div style="color:#9ca3af;padding:16px">Loading...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT: Send Money via UPI -->
-      <div>
-        <div class="card">
-          <div class="card-title">📤 Send via UPI</div>
-
-          <div class="form-group">
-            <label>From Account</label>
-            <select id="fromAccount" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
-              <option value="">Select account...</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>To UPI ID</label>
-            <div style="display:flex;gap:8px">
-              <input type="text" id="toUpiId" placeholder="e.g. ACC001234567@javabank" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
-              <button class="btn btn-outline" onclick="lookupUpi()">Verify</button>
-            </div>
-          </div>
-
-          <div class="recipient-card" id="recipientCard">
-            <div style="font-size:.8rem;color:#6b7280">Sending to</div>
-            <div style="font-weight:700;font-size:1.1rem;margin-top:4px" id="recipientName">-</div>
-            <div style="font-size:.85rem;color:#6b7280;margin-top:2px" id="recipientUpi">-</div>
-          </div>
-
-          <div class="form-group">
-            <label>Amount (₹)</label>
-            <input type="number" id="upiAmount" placeholder="Enter amount" min="1" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
-          </div>
-
-          <div class="form-group">
-            <label>Note (optional)</label>
-            <input type="text" id="upiNote" placeholder="e.g. Rent, Food, Loan" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.9rem">
-          </div>
-
-          <button class="btn btn-primary btn-full" id="upiPayBtn" onclick="doUpiPay()">
-            📱 Send Money
-          </button>
-        </div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="card-title">ℹ️ UPI Info</div>
-          <div style="font-size:.875rem;color:#4b5563;line-height:1.8">
-            <p>• Each bank account has a unique UPI ID</p>
-            <p>• Share your QR code to receive payments</p>
-            <p>• Transfers are instant between JavaBank accounts</p>
-            <p>• Fraud detection runs on all UPI payments</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
+<div id="loadSplash">
+  <div style="font-size:2.5rem">📱</div>
+  <div class="splash-spin"></div>
+  <div class="splash-txt">Loading UPI...</div>
 </div>
 
-<script src="../js/config.js"></script>
-<script src="../js/nav.js"></script>
+<!-- ══ SETUP STEP 1: Account + UPI ID ══ -->
+<div class="screen" id="setupStep1Screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="window.location.href='dashboard.html'">&#8592;</button>
+    <div class="upi-logo"><div class="logo-icon">📱</div><h2>Setup UPI</h2></div>
+  </div>
+  <div class="content-area">
+    <div class="step-indicator">
+      <div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Choose Account &amp; UPI ID</div>
+      <div class="form-group">
+        <label>Link to Account</label>
+        <select id="setupAccountSel"></select>
+      </div>
+      <div class="form-group">
+        <label>Your UPI ID</label>
+        <div class="upi-id-row">
+          <input type="text" id="upiLocalInput" placeholder="yourname" maxlength="30" oninput="checkUpiAvailability()">
+          <div class="upi-suffix">@javabank.com</div>
+        </div>
+        <div class="upi-avail" id="upiAvailMsg"></div>
+      </div>
+      <div id="setupStep1Alert" class="alert err"></div>
+      <button class="btn btn-primary" id="step1NextBtn" onclick="goToSetupStep2()" disabled>Continue &#8594;</button>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);text-align:center">Your UPI ID is permanent — choose carefully.</p>
+  </div>
+</div>
+
+<!-- ══ SETUP STEP 2: Set PIN ══ -->
+<div class="screen" id="setupStep2Screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('setupStep1Screen')">&#8592;</button>
+    <div class="upi-logo"><div class="logo-icon">📱</div><h2>Set UPI PIN</h2></div>
+  </div>
+  <div class="content-area">
+    <div class="step-indicator">
+      <div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Create 4-Digit PIN</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px">This PIN authorises all UPI payments. Keep it secret.</p>
+      <div class="pin-entry-label">Enter PIN</div>
+      <div class="pin-circles">
+        <div class="pin-circle" id="setup-c0"></div><div class="pin-circle" id="setup-c1"></div>
+        <div class="pin-circle" id="setup-c2"></div><div class="pin-circle" id="setup-c3"></div>
+      </div>
+      <div class="numpad">
+        <button class="numpad-key" onclick="setupPinKey('1')">1</button>
+        <button class="numpad-key" onclick="setupPinKey('2')">2</button>
+        <button class="numpad-key" onclick="setupPinKey('3')">3</button>
+        <button class="numpad-key" onclick="setupPinKey('4')">4</button>
+        <button class="numpad-key" onclick="setupPinKey('5')">5</button>
+        <button class="numpad-key" onclick="setupPinKey('6')">6</button>
+        <button class="numpad-key" onclick="setupPinKey('7')">7</button>
+        <button class="numpad-key" onclick="setupPinKey('8')">8</button>
+        <button class="numpad-key" onclick="setupPinKey('9')">9</button>
+        <button class="numpad-key empty-key"></button>
+        <button class="numpad-key" onclick="setupPinKey('0')">0</button>
+        <button class="numpad-key bksp" onclick="setupPinBackspace()">&#9003;</button>
+      </div>
+      <div id="setupStep2Alert" class="alert err" style="margin-top:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETUP DONE ══ -->
+<div class="screen" id="setupDoneScreen">
+  <div class="topbar">
+    <div class="upi-logo" style="flex:1;justify-content:center">
+      <div class="logo-icon">📱</div><h2>UPI Ready!</h2>
+    </div>
+  </div>
+  <div class="content-area" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:40px">
+    <div style="font-size:4rem;margin-bottom:16px">&#10003;</div>
+    <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:8px">UPI Setup Complete!</h2>
+    <p style="color:var(--muted);margin-bottom:8px">Your UPI ID:</p>
+    <div class="badge-purple" id="doneBadgeUpiId" style="margin-bottom:28px;font-size:.95rem;padding:8px 18px"></div>
+    <div class="card-title" style="text-align:center;margin-bottom:12px">Your Receive QR</div>
+    <div class="qr-wrapper"><div id="doneQrDiv"></div></div>
+    <button class="btn btn-primary" onclick="loadDashboard()" style="margin-top:20px;max-width:240px">Go to UPI &#8594;</button>
+  </div>
+</div>
+
+<!-- ══ MAIN DASHBOARD ══ -->
+<div class="screen" id="dashboardScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="window.location.href='dashboard.html'">&#8592;</button>
+    <div class="upi-logo"><div class="logo-icon">📱</div><h2>UPI</h2></div>
+  </div>
+  <div class="content-area">
+    <div class="upi-banner">
+      <div class="upi-sub">Your UPI ID</div>
+      <div class="upi-id-text" id="dashUpiId"></div>
+      <div class="upi-sub" style="margin-top:8px" id="dashAccInfo"></div>
+    </div>
+    <div class="options-grid">
+      <div class="option-card" onclick="showPayPanel()">
+        <div class="opt-icon">📤</div><div class="opt-label">Pay via UPI</div><div class="opt-sub">Scan or enter ID</div>
+      </div>
+      <div class="option-card" onclick="showQrPanel()">
+        <div class="opt-icon">📥</div><div class="opt-label">Receive QR</div><div class="opt-sub">Show your QR code</div>
+      </div>
+      <div class="option-card" onclick="showTxPanel()">
+        <div class="opt-icon">📋</div><div class="opt-label">Transactions</div><div class="opt-sub">UPI history</div>
+      </div>
+      <div class="option-card" onclick="showChangePinPanel()">
+        <div class="opt-icon">&#128272;</div><div class="opt-label">Change PIN</div><div class="opt-sub">Update UPI PIN</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAY PANEL ══ -->
+<div class="screen" id="payScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('dashboardScreen');stopCamera()">&#8592;</button>
+    <h2>Pay via UPI</h2>
+  </div>
+  <div class="content-area">
+    <div class="tab-row">
+      <button class="tab-btn active" id="tabScanner" onclick="switchPayTab('scanner')">&#128247; Scan QR</button>
+      <button class="tab-btn" id="tabManual" onclick="switchPayTab('manual')">&#9000; Enter ID</button>
+    </div>
+
+    <!-- Scanner -->
+    <div id="scannerTab">
+      <div class="scanner-box">
+        <video id="scanVideo" autoplay playsinline muted></video>
+        <div class="scanner-frame"></div>
+        <div class="scanner-line"></div>
+        <canvas id="scanCanvas"></canvas>
+      </div>
+      <p style="text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:16px">Point camera at a JavaBank UPI QR</p>
+      <button class="btn btn-outline" id="startCameraBtn" onclick="startCamera()">&#128247; Start Camera</button>
+    </div>
+
+    <!-- Manual -->
+    <div id="manualTab" style="display:none">
+      <div class="form-group">
+        <label>Recipient UPI ID</label>
+        <div class="upi-id-row">
+          <input type="text" id="recipientLocalInput" placeholder="theirname" oninput="onRecipientInput()">
+          <div class="upi-suffix">@javabank.com</div>
+        </div>
+      </div>
+      <div id="recipientInfo" style="display:none" class="recipient-found">
+        <div class="recipient-avatar" id="recipientInitial">?</div>
+        <div>
+          <div class="recipient-name" id="recipientNameLabel"></div>
+          <div class="recipient-upi" id="recipientUpiLabel"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pay form (shown after recipient found) -->
+    <div id="payFormArea" style="display:none">
+      <div id="payRecipientCard" class="recipient-found" style="display:none">
+        <div class="recipient-avatar" id="payRecipientInitial">?</div>
+        <div>
+          <div class="recipient-name" id="payRecipientName"></div>
+          <div class="recipient-upi" id="payRecipientUpi"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Amount</label>
+        <div class="upi-id-row">
+          <div style="padding:0 14px;font-size:1.2rem;font-weight:700">&#8377;</div>
+          <input type="number" id="payAmount" placeholder="0" min="1" style="border:none;background:transparent;font-size:1.3rem;font-weight:700">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <input type="text" id="payDesc" placeholder="What's this for?">
+      </div>
+      <div id="payFormAlert" class="alert err"></div>
+      <button class="btn btn-primary" onclick="proceedToPay()">Proceed to Pay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ QR PANEL ══ -->
+<div class="screen" id="qrScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('dashboardScreen')">&#8592;</button>
+    <h2>Receive via QR</h2>
+  </div>
+  <div class="content-area" style="align-items:center;text-align:center">
+    <p style="color:var(--muted);font-size:.9rem;margin-bottom:20px">Anyone scanning this QR can send you money via JavaBank UPI</p>
+    <div class="qr-wrapper"><div id="receiveQrDiv"></div></div>
+    <div style="margin-top:16px">
+      <div class="badge-purple" id="receiveUpiId" style="font-size:.95rem;padding:8px 18px;display:inline-block"></div>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted);margin-top:12px">Share this QR or your UPI ID to receive payments</p>
+    <button class="btn btn-outline" style="margin-top:16px;width:auto;padding:10px 24px" onclick="downloadQr()">&#8595; Download QR</button>
+  </div>
+</div>
+
+<!-- ══ TRANSACTIONS PANEL ══ -->
+<div class="screen" id="txScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('dashboardScreen')">&#8592;</button>
+    <h2>UPI Transactions</h2>
+  </div>
+  <div class="content-area">
+    <div id="txLoading" style="text-align:center;padding:40px;color:var(--muted)">
+      <div class="proc-spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 12px"></div>Loading...
+    </div>
+    <div id="txList"></div>
+  </div>
+</div>
+
+<!-- ══ CHANGE PIN PANEL ══ -->
+<div class="screen" id="changePinScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('dashboardScreen')">&#8592;</button>
+    <h2>Change UPI PIN</h2>
+  </div>
+  <div class="content-area">
+    <div id="cpStepA">
+      <div class="card">
+        <div class="card-title">Verify Identity</div>
+        <p style="font-size:.9rem;color:var(--muted);margin-bottom:20px">We'll send a one-time password to your registered mobile number.</p>
+        <div id="cpAlertA" class="alert err"></div>
+        <button class="btn btn-primary" id="sendOtpBtn" onclick="cpSendOtp()">Send OTP to My Phone</button>
+      </div>
+    </div>
+    <div id="cpStepB" style="display:none">
+      <div class="card">
+        <div class="card-title">Enter OTP</div>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px">Enter the 6-digit OTP sent to your registered mobile</p>
+        <div class="otp-input-row">
+          <input class="otp-box" id="co0" maxlength="1" oninput="cpOtpNext(0)" onkeydown="cpOtpBack(event,0)">
+          <input class="otp-box" id="co1" maxlength="1" oninput="cpOtpNext(1)" onkeydown="cpOtpBack(event,1)">
+          <input class="otp-box" id="co2" maxlength="1" oninput="cpOtpNext(2)" onkeydown="cpOtpBack(event,2)">
+          <input class="otp-box" id="co3" maxlength="1" oninput="cpOtpNext(3)" onkeydown="cpOtpBack(event,3)">
+          <input class="otp-box" id="co4" maxlength="1" oninput="cpOtpNext(4)" onkeydown="cpOtpBack(event,4)">
+          <input class="otp-box" id="co5" maxlength="1" oninput="cpOtpNext(5)" onkeydown="cpOtpBack(event,5)">
+        </div>
+        <div id="cpAlertB" class="alert err"></div>
+        <button class="btn btn-primary" id="verifyOtpBtn" onclick="cpVerifyOtp()">Verify OTP</button>
+      </div>
+    </div>
+    <div id="cpStepC" style="display:none">
+      <div class="card">
+        <div class="card-title">Set New PIN</div>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px">Create a new 4-digit UPI PIN</p>
+        <div class="pin-entry-label" id="cpPinLabel">Enter New PIN</div>
+        <div class="pin-circles">
+          <div class="pin-circle" id="cp-c0"></div><div class="pin-circle" id="cp-c1"></div>
+          <div class="pin-circle" id="cp-c2"></div><div class="pin-circle" id="cp-c3"></div>
+        </div>
+        <div class="hidden-validator" id="cpSamePinWarning">&#9888;&#65039; New PIN cannot be the same as your current PIN. Please choose a different one.</div>
+        <div class="numpad" style="margin-top:16px">
+          <button class="numpad-key" onclick="cpPinKey('1')">1</button>
+          <button class="numpad-key" onclick="cpPinKey('2')">2</button>
+          <button class="numpad-key" onclick="cpPinKey('3')">3</button>
+          <button class="numpad-key" onclick="cpPinKey('4')">4</button>
+          <button class="numpad-key" onclick="cpPinKey('5')">5</button>
+          <button class="numpad-key" onclick="cpPinKey('6')">6</button>
+          <button class="numpad-key" onclick="cpPinKey('7')">7</button>
+          <button class="numpad-key" onclick="cpPinKey('8')">8</button>
+          <button class="numpad-key" onclick="cpPinKey('9')">9</button>
+          <button class="numpad-key empty-key"></button>
+          <button class="numpad-key" onclick="cpPinKey('0')">0</button>
+          <button class="numpad-key bksp" onclick="cpPinBackspace()">&#9003;</button>
+        </div>
+        <div id="cpAlertC" class="alert err" style="margin-top:16px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAYMENT BOTTOM SHEET ══ -->
+<div class="overlay" id="payBottomOverlay" onclick="closePayBottomSheet(event)">
+  <div class="bottom-sheet">
+    <div class="bs-handle"></div>
+    <div class="bs-total-row">
+      <span class="bs-total-label">Total Payable</span>
+      <span class="bs-total-amount" id="bsAmount">&#8377;0.00</span>
+    </div>
+    <div style="font-size:.85rem;color:var(--muted);margin-bottom:14px">Pay from account</div>
+    <div id="bsBankOptions"></div>
+    <button class="btn btn-primary" onclick="goToPinEntry()" style="margin-top:8px">Proceed to Pay</button>
+  </div>
+</div>
+
+<!-- ══ PHONPE-LIKE PIN ENTRY PAGE ══ -->
+<div class="screen" id="pinEntryScreen">
+  <div class="topbar" style="background:transparent;border:none">
+    <button class="back-btn" onclick="showScreen('payScreen')">&#8592;</button>
+    <div class="upi-logo">
+      <!-- UPI logo-like SVG -->
+      <svg width="36" height="21" viewBox="0 0 36 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 11.5L10 2L18 11.5" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 9.5L26 19L34 9.5" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span style="font-weight:800;font-size:1.1rem;margin-left:4px">UPI</span>
+    </div>
+  </div>
+  <div class="pin-entry-body">
+    <div class="pin-bank-info">
+      <div class="pin-bank-type" id="pinBankType">SAVINGS ACCOUNT</div>
+      <div class="pin-bank-name" id="pinBankName">JavaBank &#8212; &#8226;&#8226;&#8226;&#8226; 0000</div>
+    </div>
+    <div class="pin-pay-amount">
+      <div class="label">Pay</div>
+      <div class="amt" id="pinPayAmt">&#8377;0.00</div>
+    </div>
+    <div class="pin-recipient" id="pinPayRecipient">to &#8212;</div>
+    <div class="pin-entry-label">Enter UPI PIN</div>
+    <div class="pin-circles">
+      <div class="pin-circle" id="pay-c0"></div><div class="pin-circle" id="pay-c1"></div>
+      <div class="pin-circle" id="pay-c2"></div><div class="pin-circle" id="pay-c3"></div>
+    </div>
+    <div class="numpad">
+      <button class="numpad-key" onclick="payPinKey('1')">1</button>
+      <button class="numpad-key" onclick="payPinKey('2')">2</button>
+      <button class="numpad-key" onclick="payPinKey('3')">3</button>
+      <button class="numpad-key" onclick="payPinKey('4')">4</button>
+      <button class="numpad-key" onclick="payPinKey('5')">5</button>
+      <button class="numpad-key" onclick="payPinKey('6')">6</button>
+      <button class="numpad-key" onclick="payPinKey('7')">7</button>
+      <button class="numpad-key" onclick="payPinKey('8')">8</button>
+      <button class="numpad-key" onclick="payPinKey('9')">9</button>
+      <button class="numpad-key empty-key"></button>
+      <button class="numpad-key" onclick="payPinKey('0')">0</button>
+      <button class="numpad-key bksp" onclick="payPinBackspace()">&#9003;</button>
+    </div>
+    <div id="pinEntryAlert" class="alert err" style="width:100%;max-width:280px;margin-top:12px"></div>
+    <button class="btn btn-primary" id="pinPayBtn" onclick="submitUpiPay()" disabled style="margin-top:20px;width:180px">PAY</button>
+  </div>
+</div>
+
+<!-- ══ PROCESSING SCREEN ══ -->
+<div class="screen" id="processingScreen" style="align-items:center;justify-content:center">
+  <div class="processing-inner">
+    <div class="proc-spinner"></div>
+    <div class="proc-title">Processing Payment</div>
+    <div class="proc-sub" id="procSubMsg">Verifying UPI PIN...</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<script src="/js/config.js"></script>
+<script src="/js/txn-popup.js"></script>
 <script>
 Auth.requireAuth();
-renderSidebar("upi");
 
-const user = Auth.getUser();
-let verifiedUpiId = null;
+// ── State ────────────────────────────────────────────
+let profile          = null;
+let pendingRecipient = null;
+let setupPin         = [];
+let payPin           = [];
+let cpPin            = [];
+let cameraStream     = null;
+let currentPayTab    = 'scanner';
 
+// ── Screen manager ───────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+// ── Init ─────────────────────────────────────────────
 async function init() {
-    try {
-        const accounts = await API.call("/upi/accounts");
-        const fromSel = document.getElementById("fromAccount");
-        fromSel.innerHTML = accounts.map(a =>
-            `<option value="${a.id}" data-upi="${a.upiId}">${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})</option>`
-        ).join("");
-
-        const list = document.getElementById("myUpiList");
-        if (accounts.length === 0) {
-            list.innerHTML = `<div style="color:#9ca3af;padding:16px">No accounts found. Create an account first.</div>`;
-            return;
-        }
-
-        list.innerHTML = accounts.map((acc, i) => `
-          <div class="upi-card" style="margin-bottom:${i < accounts.length-1 ? '16px' : '0'}">
-            <div style="font-size:.8rem;opacity:.8;text-transform:uppercase;letter-spacing:.1em">${acc.accountType} Account</div>
-            <div style="font-size:.85rem;opacity:.7;margin-top:2px">${acc.accountNumber}</div>
-            <div class="upi-id-display">${acc.upiId}</div>
-            <div style="margin-top:8px;font-size:.85rem;opacity:.8">Balance: ${fmt(acc.balance)}</div>
-            <div class="qr-box" id="qr-${acc.id}"></div>
-            <div style="margin-top:8px">
-              <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="copyUpi('${acc.upiId}')">
-                📋 Copy UPI ID
-              </button>
-              <a href="pay.html?to=${acc.upiId}&name=${encodeURIComponent(user.fullName || user.username)}"
-                 target="_blank"
-                 class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;margin-left:6px;text-decoration:none">
-                🔗 Payment Link
-              </a>
-            </div>
-          </div>
-        `).join("");
-
-        // Generate QR codes
-        accounts.forEach(acc => {
-            const payUrl = `${window.location.origin}/pages/pay.html?to=${acc.upiId}&name=${encodeURIComponent(user.fullName || user.username)}`;
-            new QRCode(document.getElementById(`qr-${acc.id}`), {
-                text: payUrl,
-                width: 140,
-                height: 140,
-                colorDark: "#1a56db",
-                colorLight: "#ffffff",
-            });
-        });
-
-    } catch(e) {
-        console.error(e);
+  try {
+    const data = await API.call('/upi/profile');
+    if (data && data.hasProfile) {
+      profile = data;
+      loadDashboard();
+      // Handle deep-link: ?pay=localpart
+      const params = new URLSearchParams(window.location.search);
+      const payParam = params.get('pay');
+      if (payParam) {
+        const fullId = payParam.includes('@') ? payParam : (payParam + '@javabank.com');
+        showPayPanel();
+        switchPayTab('manual');
+        document.getElementById('recipientLocalInput').value = payParam.replace('@javabank.com','');
+        setTimeout(() => lookupRecipient(fullId), 300);
+      }
+    } else {
+      await loadSetupAccounts();
+      showScreen('setupStep1Screen');
     }
+  } catch(e) {
+    await loadSetupAccounts();
+    showScreen('setupStep1Screen');
+  } finally {
+    document.getElementById('loadSplash').style.display = 'none';
+  }
 }
 
-async function lookupUpi() {
-    const upiId = document.getElementById("toUpiId").value.trim();
-    if (!upiId) { showAlert("Enter a UPI ID to verify", "warning"); return; }
-    try {
-        const result = await API.call(`/upi/lookup?upiId=${encodeURIComponent(upiId)}`);
-        verifiedUpiId = upiId;
-        document.getElementById("recipientName").textContent = result.name;
-        document.getElementById("recipientUpi").textContent = upiId;
-        document.getElementById("recipientCard").style.display = "";
-        showAlert(`✅ UPI ID verified — ${result.name}`, "success");
-    } catch(e) {
-        verifiedUpiId = null;
-        document.getElementById("recipientCard").style.display = "none";
-        showAlert("UPI ID not found. Please check and try again.", "error");
+// ── SETUP ────────────────────────────────────────────
+async function loadSetupAccounts() {
+  try {
+    const accounts = await API.call('/accounts');
+    const sel = document.getElementById('setupAccountSel');
+    if (!accounts || accounts.length === 0) {
+      sel.innerHTML = '<option value="">No accounts found</option>';
+      return;
     }
+    sel.innerHTML = accounts.map(a =>
+      `<option value="${a.id}">${a.accountType} &#8212; ${a.accountNumber} (&#8377;${Number(a.balance||0).toLocaleString('en-IN',{minimumFractionDigits:2})})</option>`
+    ).join('');
+  } catch(e) { showAlert('setupStep1Alert', 'Could not load accounts: ' + e.message, true); }
 }
 
-async function doUpiPay() {
-    const fromAccountId = parseInt(document.getElementById("fromAccount").value);
-    const toUpiId = document.getElementById("toUpiId").value.trim();
-    const amount = parseFloat(document.getElementById("upiAmount").value);
-    const note = document.getElementById("upiNote").value || "UPI Payment";
-
-    if (!fromAccountId) { showAlert("Select a source account", "warning"); return; }
-    if (!toUpiId) { showAlert("Enter recipient UPI ID", "warning"); return; }
-    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
-    if (!verifiedUpiId) { showAlert("Please verify the UPI ID first", "warning"); return; }
-
-    const btn = document.getElementById("upiPayBtn");
-    btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Sending...';
-
+let upiCheckTimeout;
+function checkUpiAvailability() {
+  const val = document.getElementById('upiLocalInput').value.trim().toLowerCase();
+  const msg = document.getElementById('upiAvailMsg');
+  const btn = document.getElementById('step1NextBtn');
+  btn.disabled = true;
+  msg.className = 'upi-avail';
+  msg.textContent = '';
+  if (!val) return;
+  if (!/^[a-zA-Z0-9._]{3,30}$/.test(val)) {
+    msg.textContent = '&#x2717; Use only letters, numbers, dots, underscores (3-30 chars)';
+    msg.className = 'upi-avail err'; return;
+  }
+  clearTimeout(upiCheckTimeout);
+  msg.textContent = '&#8987; Checking...';
+  upiCheckTimeout = setTimeout(async () => {
     try {
-        const tx = await API.call("/upi/pay", "POST", { fromAccountId, toUpiId, amount, note });
-        const msg = tx.flagged
-            ? `✅ Sent ${fmt(amount)} to ${toUpiId} — ⚠️ flagged for review`
-            : `✅ Sent ${fmt(amount)} to ${toUpiId} successfully!`;
-        showAlert(msg, tx.flagged ? "warning" : "success");
-        document.getElementById("toUpiId").value = "";
-        document.getElementById("upiAmount").value = "";
-        document.getElementById("upiNote").value = "";
-        document.getElementById("recipientCard").style.display = "none";
-        verifiedUpiId = null;
-        await init();
-    } catch(e) {
-        showAlert(e.message, "error");
-    } finally {
-        btn.disabled = false; btn.innerHTML = "📱 Send Money";
+      const res = await API.call(`/upi/check-id?upiLocalId=${encodeURIComponent(val)}`);
+      if (res.taken) {
+        msg.textContent = '&#x2717; ' + res.upiId + ' is already taken';
+        msg.className = 'upi-avail err';
+      } else {
+        msg.textContent = '&#x2713; ' + res.upiId + ' is available!';
+        msg.className = 'upi-avail ok';
+        btn.disabled = false;
+      }
+    } catch(e) { msg.textContent = '&#9888; Server error — try again'; msg.className = 'upi-avail err'; }
+  }, 600);
+}
+
+function goToSetupStep2() {
+  showScreen('setupStep2Screen');
+  setupPin = [];
+  updatePinDots('setup', setupPin);
+}
+
+function updatePinDots(prefix, arr) {
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById(`${prefix}-c${i}`);
+    if (el) el.classList.toggle('filled', i < arr.length);
+  }
+}
+
+function setupPinKey(d) {
+  if (setupPin.length >= 4) return;
+  setupPin.push(d);
+  updatePinDots('setup', setupPin);
+  if (setupPin.length === 4) saveSetupPin();
+}
+function setupPinBackspace() { setupPin.pop(); updatePinDots('setup', setupPin); }
+
+async function saveSetupPin() {
+  const localId   = document.getElementById('upiLocalInput').value.trim().toLowerCase();
+  const accountId = document.getElementById('setupAccountSel').value;
+  const pin       = setupPin.join('');
+  try {
+    const res = await API.call('/upi/setup', 'POST', { upiLocalId: localId, accountId, pin });
+    profile = { upiId: res.upiId };
+    document.getElementById('doneBadgeUpiId').textContent = res.upiId;
+    generateQr('doneQrDiv', res.upiId);
+    showScreen('setupDoneScreen');
+  } catch(e) {
+    showAlert('setupStep2Alert', e.message, true);
+    setupPin = [];
+    updatePinDots('setup', setupPin);
+  }
+}
+
+// ── DASHBOARD ────────────────────────────────────────
+function loadDashboard() {
+  if (!profile) return;
+  document.getElementById('dashUpiId').textContent = profile.upiId || '';
+  const accText = profile.accountType
+    ? profile.accountType + ' &#8212; JavaBank' + (profile.accountNumber ? ' &#8226;&#8226;&#8226;&#8226;' + profile.accountNumber.slice(-4) : '')
+    : 'JavaBank Account';
+  document.getElementById('dashAccInfo').innerHTML = accText;
+  showScreen('dashboardScreen');
+}
+
+// ── PAY PANEL ────────────────────────────────────────
+function showPayPanel() {
+  pendingRecipient = null;
+  document.getElementById('payFormArea').style.display = 'none';
+  document.getElementById('payRecipientCard').style.display = 'none';
+  document.getElementById('recipientInfo').style.display = 'none';
+  document.getElementById('recipientLocalInput').value = '';
+  document.getElementById('payAmount').value = '';
+  document.getElementById('payDesc').value = '';
+  showAlert('payFormAlert', '', false);
+  showScreen('payScreen');
+  if (currentPayTab === 'scanner') startCamera();
+}
+
+function switchPayTab(tab) {
+  currentPayTab = tab;
+  document.getElementById('tabScanner').classList.toggle('active', tab === 'scanner');
+  document.getElementById('tabManual').classList.toggle('active', tab === 'manual');
+  document.getElementById('scannerTab').style.display = tab === 'scanner' ? 'block' : 'none';
+  document.getElementById('manualTab').style.display = tab === 'manual' ? 'block' : 'none';
+  if (tab === 'scanner') startCamera(); else stopCamera();
+}
+
+async function startCamera() {
+  const btn = document.getElementById('startCameraBtn');
+  btn.textContent = '&#8987; Starting...';
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('scanVideo');
+    video.srcObject = cameraStream;
+    btn.textContent = '&#128247; Camera Active';
+    btn.disabled = true;
+    requestAnimationFrame(scanFrame);
+  } catch(e) {
+    btn.textContent = '&#128247; Start Camera';
+    showAlert('payFormAlert', 'Camera access denied. Use manual entry instead.', true);
+    switchPayTab('manual');
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  const btn = document.getElementById('startCameraBtn');
+  if (btn) { btn.textContent = '&#128247; Start Camera'; btn.disabled = false; }
+}
+
+function scanFrame() {
+  if (!cameraStream) return;
+  const video = document.getElementById('scanVideo');
+  if (!video || video.readyState < 2) { requestAnimationFrame(scanFrame); return; }
+  const canvas = document.getElementById('scanCanvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  try {
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imgData.data, imgData.width, imgData.height);
+    if (code && code.data) { handleScannedQR(code.data); return; }
+  } catch(e) {}
+  requestAnimationFrame(scanFrame);
+}
+
+async function handleScannedQR(raw) {
+  stopCamera();
+  let upiLocalPart = null;
+  try {
+    const url = new URL(raw);
+    upiLocalPart = url.searchParams.get('pay');
+  } catch(e) {
+    if (raw.startsWith('upi://')) {
+      const pa = new URLSearchParams(raw.split('?')[1]).get('pa');
+      if (pa) upiLocalPart = pa.replace('@javabank.com','');
     }
+  }
+  if (!upiLocalPart) { showAlert('payFormAlert', 'Not a valid JavaBank UPI QR code.', true); return; }
+  switchPayTab('manual');
+  document.getElementById('recipientLocalInput').value = upiLocalPart;
+  await lookupRecipient(upiLocalPart + '@javabank.com');
 }
 
-function copyUpi(upiId) {
-    navigator.clipboard.writeText(upiId).then(() => showAlert("UPI ID copied!", "success"));
+let recipientTimeout;
+function onRecipientInput() {
+  clearTimeout(recipientTimeout);
+  const val = document.getElementById('recipientLocalInput').value.trim().toLowerCase();
+  document.getElementById('recipientInfo').style.display = 'none';
+  document.getElementById('payFormArea').style.display = 'none';
+  pendingRecipient = null;
+  if (!val || val.length < 2) return;
+  recipientTimeout = setTimeout(() => lookupRecipient(val + '@javabank.com'), 700);
 }
 
-function showAlert(msg, type = "success") {
-    document.getElementById("alertBox").innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-    if (type === "success") setTimeout(() => document.getElementById("alertBox").innerHTML = "", 4000);
+async function lookupRecipient(fullId) {
+  try {
+    const res = await API.call(`/upi/lookup?upiId=${encodeURIComponent(fullId)}`);
+    pendingRecipient = res;
+    const name = res.name || 'JavaBank User';
+    const initial = name.charAt(0).toUpperCase();
+
+    document.getElementById('recipientInitial').textContent = initial;
+    document.getElementById('recipientNameLabel').textContent = name;
+    document.getElementById('recipientUpiLabel').textContent = res.upiId;
+    document.getElementById('recipientInfo').style.display = 'flex';
+
+    document.getElementById('payRecipientInitial').textContent = initial;
+    document.getElementById('payRecipientName').textContent = name;
+    document.getElementById('payRecipientUpi').textContent = res.upiId;
+    document.getElementById('payRecipientCard').style.display = 'flex';
+    document.getElementById('payFormArea').style.display = 'block';
+  } catch(e) {
+    document.getElementById('recipientInfo').style.display = 'none';
+    document.getElementById('payFormArea').style.display = 'none';
+    if (e.message && e.message.includes('not found')) showAlert('payFormAlert', 'UPI ID not found: ' + fullId, true);
+  }
 }
 
+function proceedToPay() {
+  if (!pendingRecipient) { showAlert('payFormAlert', 'Please select a recipient first.', true); return; }
+  const amount = parseFloat(document.getElementById('payAmount').value);
+  if (!amount || amount <= 0) { showAlert('payFormAlert', 'Please enter a valid amount.', true); return; }
+
+  document.getElementById('bsAmount').textContent = fmt(amount);
+  document.getElementById('bsBankOptions').innerHTML = `
+    <div class="bank-option selected">
+      <div class="bank-icon">&#127974;</div>
+      <div class="bank-info">
+        <div class="bank-name">${profile.accountType || 'Account'}</div>
+        <div class="bank-acc">JavaBank &#8212; &#8226;&#8226;&#8226;&#8226;${(profile.accountNumber||'').slice(-4)}</div>
+      </div>
+    </div>`;
+  document.getElementById('payBottomOverlay').classList.add('open');
+}
+
+function closePayBottomSheet(e) {
+  if (e.target === document.getElementById('payBottomOverlay'))
+    document.getElementById('payBottomOverlay').classList.remove('open');
+}
+
+// ── PhonePe PIN ENTRY ────────────────────────────────
+function goToPinEntry() {
+  document.getElementById('payBottomOverlay').classList.remove('open');
+  const amount = parseFloat(document.getElementById('payAmount').value);
+  const name   = pendingRecipient ? pendingRecipient.name : '?';
+
+  document.getElementById('pinPayAmt').textContent = fmt(amount);
+  document.getElementById('pinPayRecipient').textContent = 'to ' + name;
+  document.getElementById('pinBankType').textContent = (profile.accountType || 'Account').toUpperCase();
+  document.getElementById('pinBankName').innerHTML = 'JavaBank &#8212; &#8226;&#8226;&#8226;&#8226;' + (profile.accountNumber||'').slice(-4);
+
+  payPin = [];
+  updatePinDots('pay', payPin);
+  document.getElementById('pinPayBtn').disabled = true;
+  showAlert('pinEntryAlert', '', false);
+  showScreen('pinEntryScreen');
+}
+
+function payPinKey(d) {
+  if (payPin.length >= 4) return;
+  payPin.push(d);
+  updatePinDots('pay', payPin);
+  document.getElementById('pinPayBtn').disabled = payPin.length < 4;
+}
+function payPinBackspace() {
+  payPin.pop();
+  updatePinDots('pay', payPin);
+  document.getElementById('pinPayBtn').disabled = payPin.length < 4;
+}
+
+async function submitUpiPay() {
+  if (payPin.length < 4) return;
+  const amount  = parseFloat(document.getElementById('payAmount').value);
+  const desc    = document.getElementById('payDesc').value.trim() || 'UPI Payment';
+  const toUpiId = pendingRecipient.upiId;
+  const pin     = payPin.join('');
+
+  showScreen('processingScreen');
+  document.getElementById('procSubMsg').textContent = 'Verifying UPI PIN...';
+  const t1 = setTimeout(() => { document.getElementById('procSubMsg').textContent = 'Checking balance...'; }, 1000);
+  const t2 = setTimeout(() => { document.getElementById('procSubMsg').textContent = 'Processing transfer...'; }, 2000);
+
+  try {
+    const res = await API.call('/upi/pay', 'POST', { toUpiId, pin, amount, description: desc });
+    clearTimeout(t1); clearTimeout(t2);
+    showScreen('dashboardScreen');
+    showTxnPopup({
+      type:        'success',
+      title:       'UPI Payment Successful!',
+      amount:      res.amount,
+      txnId:       'TXN-' + res.id,
+      date:        fmtDate(res.date),
+      balanceAfter: res.balanceAfter,
+      description: desc,
+      toAccount:   pendingRecipient.name + ' (' + toUpiId + ')',
+      txnType:     'UPI Transfer'
+    });
+  } catch(e) {
+    clearTimeout(t1); clearTimeout(t2);
+    if (e.held) {
+      showScreen('dashboardScreen');
+      showTxnPopup({ type:'held', title:'UPI Payment Paused', amount, txnId:'PENDING-'+e.pendingId,
+        date:fmtDate(new Date().toISOString()), description:'Transaction held for fraud review.', txnType:'UPI Transfer', pendingId:e.pendingId });
+      return;
+    }
+    showScreen('pinEntryScreen');
+    showAlert('pinEntryAlert', e.message || 'Payment failed. Check PIN and balance.', true);
+    payPin = [];
+    updatePinDots('pay', payPin);
+    document.getElementById('pinPayBtn').disabled = true;
+  }
+}
+
+// ── QR PANEL ─────────────────────────────────────────
+let receiveQrGenerated = false;
+function showQrPanel() {
+  showScreen('qrScreen');
+  document.getElementById('receiveUpiId').textContent = profile.upiId || '';
+  if (!receiveQrGenerated) {
+    generateQr('receiveQrDiv', profile.upiId);
+    receiveQrGenerated = true;
+  }
+}
+
+function generateQr(divId, upiId) {
+  const el = document.getElementById(divId);
+  el.innerHTML = '';
+  const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://java-banking-webapp.vercel.app';
+  const localPart = (upiId || '').replace('@javabank.com', '');
+  new QRCode(el, {
+    text: `${baseUrl}/pages/upi.html?pay=${localPart}`,
+    width: 200, height: 200,
+    colorDark: '#1a1a24', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+function downloadQr() {
+  const canvas = document.querySelector('#receiveQrDiv canvas');
+  if (!canvas) { alert('QR not ready'); return; }
+  const a = document.createElement('a');
+  a.download = 'javabank-upi-qr.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+// ── TRANSACTIONS ─────────────────────────────────────
+async function showTxPanel() {
+  showScreen('txScreen');
+  document.getElementById('txLoading').style.display = 'block';
+  document.getElementById('txList').innerHTML = '';
+  try {
+    const txList = await API.call('/upi/transactions');
+    document.getElementById('txLoading').style.display = 'none';
+    if (!txList || txList.length === 0) {
+      document.getElementById('txList').innerHTML = `
+        <div class="empty-state"><div class="empty-icon">&#128237;</div><p>No UPI transactions yet</p></div>`;
+      return;
+    }
+    document.getElementById('txList').innerHTML = txList.map(tx => {
+      const isOut = tx.type === 'TRANSFER';
+      const sign  = isOut ? '-' : '+';
+      const cls   = isOut ? 'out' : 'in';
+      const icon  = isOut ? '&#128228;' : '&#128229;';
+      const raw   = (tx.description || '').replace('[UPI] ','');
+      const desc  = raw.split('|')[0].trim();
+      return `<div class="tx-item">
+        <div class="tx-icon ${cls}">${icon}</div>
+        <div class="tx-info">
+          <div class="tx-desc" title="${tx.description||''}">${desc}</div>
+          <div class="tx-date">${fmtDate(tx.date)}&nbsp;&middot;&nbsp;ID:&nbsp;${tx.id}</div>
+        </div>
+        <div class="tx-amount ${cls}">${sign}&#8377;${Number(tx.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('txLoading').style.display = 'none';
+    document.getElementById('txList').innerHTML = `<div class="alert err show">${e.message}</div>`;
+  }
+}
+
+// ── CHANGE PIN ───────────────────────────────────────
+function showChangePinPanel() {
+  document.getElementById('cpStepA').style.display = 'block';
+  document.getElementById('cpStepB').style.display = 'none';
+  document.getElementById('cpStepC').style.display = 'none';
+  showAlert('cpAlertA','',false);
+  const btn = document.getElementById('sendOtpBtn');
+  btn.disabled = false; btn.textContent = 'Send OTP to My Phone';
+  showScreen('changePinScreen');
+}
+
+async function cpSendOtp() {
+  const btn = document.getElementById('sendOtpBtn');
+  btn.disabled = true; btn.textContent = '&#8987; Sending...';
+  try {
+    await API.call('/upi/change-pin/send-otp', 'POST', {});
+    document.getElementById('cpStepA').style.display = 'none';
+    document.getElementById('cpStepB').style.display = 'block';
+    document.getElementById('co0').focus();
+  } catch(e) {
+    showAlert('cpAlertA', e.message, true);
+    btn.disabled = false; btn.textContent = 'Send OTP to My Phone';
+  }
+}
+
+function cpOtpNext(idx) {
+  const val = document.getElementById('co' + idx).value;
+  if (val && idx < 5) document.getElementById('co' + (idx+1)).focus();
+}
+function cpOtpBack(e, idx) {
+  if (e.key === 'Backspace' && !document.getElementById('co'+idx).value && idx > 0)
+    document.getElementById('co'+(idx-1)).focus();
+}
+
+async function cpVerifyOtp() {
+  const otp = [0,1,2,3,4,5].map(i => document.getElementById('co'+i).value).join('');
+  if (otp.length < 6) { showAlert('cpAlertB','Enter full 6-digit OTP',true); return; }
+  const btn = document.getElementById('verifyOtpBtn');
+  btn.disabled = true; btn.textContent = '&#8987; Verifying...';
+  try {
+    await API.call('/upi/change-pin/verify-otp', 'POST', { otp });
+    document.getElementById('cpStepB').style.display = 'none';
+    document.getElementById('cpStepC').style.display = 'block';
+    cpPin = [];
+    updatePinDots('cp', cpPin);
+    document.getElementById('cpSamePinWarning').style.display = 'none';
+  } catch(e) {
+    showAlert('cpAlertB', e.message, true);
+  }
+  btn.disabled = false; btn.textContent = 'Verify OTP';
+}
+
+function cpPinKey(d) {
+  if (cpPin.length >= 4) return;
+  cpPin.push(d);
+  updatePinDots('cp', cpPin);
+  if (cpPin.length === 4) cpSubmitPin();
+}
+function cpPinBackspace() {
+  cpPin.pop();
+  updatePinDots('cp', cpPin);
+  document.getElementById('cpSamePinWarning').style.display = 'none';
+}
+
+async function cpSubmitPin() {
+  const pin = cpPin.join('');
+  try {
+    await API.call('/upi/change-pin', 'POST', { pin });
+    showScreen('dashboardScreen');
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;inset:0;background:rgba(22,163,74,.18);display:flex;align-items:center;justify-content:center;z-index:9999';
+    banner.innerHTML = '<div style="background:#1a1a24;border-radius:16px;padding:32px 40px;text-align:center;border:1px solid rgba(22,163,74,.4)"><div style="font-size:2.5rem">&#128272;</div><div style="font-size:1.2rem;font-weight:700;margin-top:12px;color:#16a34a">PIN Changed!</div><div style="color:#94a3b8;margin-top:6px;font-size:.9rem">Your UPI PIN has been updated.</div></div>';
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 2500);
+  } catch(e) {
+    // Triggered when new PIN == current PIN
+    document.getElementById('cpSamePinWarning').style.display = 'block';
+    showAlert('cpAlertC', e.message, true);
+    cpPin = [];
+    updatePinDots('cp', cpPin);
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────
+function showAlert(id, msg, show) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('show', show === true && !!msg);
+}
+
+// Boot
 init();
 </script>
 </body>

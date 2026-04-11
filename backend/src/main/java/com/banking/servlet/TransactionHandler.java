@@ -58,32 +58,16 @@ public class TransactionHandler extends BaseHandler {
 
         } catch (FraudDetectedException e) {
             // ----------------------------------------------------------------
-            // PROACTIVE FRAUD HOLD — special response format
+            // PROACTIVE FRAUD HOLD: BankingService already sent email+SMS notification
+            // with the CORRECT amount. Just return the 202 held response.
             // Message format: "TRANSACTION_HELD:<pendingId>:<human message>"
             // ----------------------------------------------------------------
             String msg = e.getMessage();
             if (msg != null && msg.startsWith("TRANSACTION_HELD:")) {
-                String[] parts       = msg.split(":", 3);
-                String pendingId     = parts.length > 1 ? parts[1] : "0";
-                String humanMessage  = parts.length > 2 ? parts[2]
+                String[] parts      = msg.split(":", 3);
+                String pendingId    = parts.length > 1 ? parts[1] : "0";
+                String humanMessage = parts.length > 2 ? parts[2]
                         : "Transaction held for fraud verification.";
-
-                // Send HELD notification (email + SMS) asynchronously
-                try {
-                    int pid = Integer.parseInt(pendingId);
-                    if (user.getEmail() != null && !user.getEmail().isEmpty()) {
-                        EmailService.sendTransactionHeldEmail(
-                            user.getEmail(), user.getFullName(),
-                            "Transaction", 0, pid, humanMessage);
-                    }
-                    if (user.getPhone() != null && !user.getPhone().isEmpty()) {
-                        SMSService.sendTransactionSms(
-                            user.getPhone(), user.getFullName(),
-                            "Transaction", 0, "HELD", null);
-                    }
-                } catch (Exception ignored) {
-                    System.err.println("[TransactionHandler] Notification error: " + ignored.getMessage());
-                }
 
                 // Return 202 Accepted — transaction is HELD, not blocked
                 String json = "{\"success\":false,\"held\":true,\"pendingId\":" + pendingId
