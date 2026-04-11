@@ -32,14 +32,22 @@ public class BankingServer {
         });
 
         server.createContext("/", (HttpExchange exchange) -> {
+            // Always add CORS headers for every response from root handler
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+            // Handle CORS preflight
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
             String path = exchange.getRequestURI().getPath();
 
-            // Fast2SMS / any domain-verification file — serves the filename as content
-            // e.g. /fast2sms-verify-abc123.txt  →  "fast2sms-verify-abc123.txt"
-            // This lets Fast2SMS confirm you own the domain automatically.
+            // Domain-verification file passthrough (e.g. Fast2SMS)
             if (path.endsWith(".txt") || path.contains("verify") || path.contains("verification")) {
-                String filename = path.replaceFirst("^/", ""); // strip leading /
+                String filename = path.replaceFirst("^/", "");
                 byte[] response = filename.getBytes();
                 exchange.getResponseHeaders().add("Content-Type", "text/plain");
                 exchange.sendResponseHeaders(200, response.length);
@@ -70,7 +78,10 @@ public class BankingServer {
         server.createContext("/api/auth/verify-phone-otp",     new AuthHandler());
         server.createContext("/api/auth/login-phone-otp",      new AuthHandler()); // Mobile OTP login - send OTP
         server.createContext("/api/auth/verify-phone-login",   new AuthHandler()); // Mobile OTP login - verify
-        server.createContext("/api/auth/check-availability",   new AuthHandler()); // Check username/email/phone taken
+        server.createContext("/api/auth/check-availability",         new AuthHandler()); // Check username/email/phone taken
+        server.createContext("/api/auth/forgot-password-send-otp",    new AuthHandler()); // Forgot password - send OTP
+        server.createContext("/api/auth/forgot-password-verify-otp",  new AuthHandler()); // Forgot password - verify OTP
+        server.createContext("/api/auth/forgot-password-reset",       new AuthHandler()); // Forgot password - set new password
 
         // -------------------------------------------------------
         // Profile endpoints (require auth)
@@ -82,7 +93,10 @@ public class BankingServer {
         server.createContext("/api/profile/verify-new-email",  profileHandler); // POST verify new email OTP
         server.createContext("/api/profile/update-phone",      profileHandler); // POST initiate phone change
         server.createContext("/api/profile/verify-new-phone",  profileHandler); // POST verify new phone OTP
-        server.createContext("/api/profile/delete-account",    profileHandler); // POST delete account
+        server.createContext("/api/profile/delete-account",         profileHandler); // POST delete account
+        server.createContext("/api/profile/change-password",         profileHandler); // POST change password
+        server.createContext("/api/profile/send-change-email-otp",   profileHandler); // POST send OTP before email change
+        server.createContext("/api/profile/send-change-phone-otp",   profileHandler); // POST send OTP before phone change
 
         // -------------------------------------------------------
         // Account & transaction endpoints
