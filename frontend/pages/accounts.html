@@ -15,15 +15,17 @@
       overflow-y: auto;
       padding: 0;
       border-radius: 18px;
+      background: #0f172a !important; /* Force dark background — overrides global white */
+      color: #f1f5f9;
     }
 
     .modal-header {
       position: sticky;
       top: 0;
-      background: var(--bg-card, #111827);
+      background: #0f172a;
       z-index: 10;
       padding: 1.25rem 1.6rem 0.75rem;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .modal-header h2 {
       font-size: 1.15rem;
@@ -33,9 +35,11 @@
     }
     .modal-header p {
       font-size: 0.8rem;
-      color: #6b7280;
+      color: #94a3b8;
       margin: 0;
     }
+    .modal-close { color: #64748b !important; }
+    .modal-close:hover { color: #f1f5f9 !important; }
 
     /* Step progress bar */
     .form-steps {
@@ -43,8 +47,8 @@
       align-items: center;
       gap: 0;
       padding: 1rem 1.6rem 0.8rem;
-      background: var(--bg-card, #111827);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: #0f172a;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
     .fstep {
       display: flex;
@@ -58,27 +62,28 @@
       border-radius: 50%;
       border: 2px solid rgba(255,255,255,0.15);
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.74rem; font-weight: 700; color: #4b5563;
+      font-size: 0.74rem; font-weight: 700; color: #64748b;
       transition: all 0.3s;
     }
     .fstep-dot.active { border-color: #4c6ef5; color: #4c6ef5; background: rgba(76,110,245,0.12); }
     .fstep-dot.done   { border-color: #2f9e44; color: #fff; background: #2f9e44; }
-    .fstep-label { font-size: 0.62rem; color: #4b5563; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
-    .fstep-label.active { color: #748ffc; }
+    .fstep-label { font-size: 0.62rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+    .fstep-label.active { color: #818cf8; }
     .fstep-line { flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin-bottom: 18px; }
     .fstep-line.done { background: #2f9e44; }
 
     /* Section body */
     .form-section {
       padding: 1.4rem 1.6rem;
+      background: #0f172a;
       display: none;
     }
     .form-section.active { display: block; }
 
     .section-title {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
-      color: #748ffc;
+      color: #818cf8;
       text-transform: uppercase;
       letter-spacing: 0.07em;
       margin-bottom: 1rem;
@@ -90,10 +95,10 @@
       content: '';
       flex: 1;
       height: 1px;
-      background: rgba(116,143,252,0.2);
+      background: rgba(129,140,248,0.2);
     }
 
-    /* Form fields */
+    /* Form field rows */
     .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
     .frow.single { grid-template-columns: 1fr; }
     .frow.triple { grid-template-columns: 1fr 1fr 1fr; }
@@ -104,22 +109,26 @@
     .fg {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 5px;
     }
     .fg label {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 600;
-      color: #6b7280;
+      color: #94a3b8;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
     }
-    .fg label .req { color: #f03e3e; margin-left: 2px; }
-    .fg label .opt { color: #4b5563; font-weight: 400; text-transform: none; font-size: 0.68rem; }
+    .fg label .req { color: #f87171; margin-left: 2px; }
+    .fg label .opt { color: #475569; font-weight: 400; text-transform: none; font-size: 0.68rem; }
 
-    .fg input, .fg select, .fg textarea {
+    /* ─── THE FIX: explicit dark-on-dark inputs ─── */
+    .fg input,
+    .fg select,
+    .fg textarea {
+      width: 100%;
       padding: 0.62rem 0.85rem;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: #1e293b !important;
+      border: 1px solid #334155 !important;
       border-radius: 10px;
       color: #f1f5f9 !important;
       font-size: 0.88rem;
@@ -127,28 +136,37 @@
       transition: all 0.2s;
       outline: none;
     }
-    .fg input::placeholder, .fg textarea::placeholder {
-      color: #6b7280 !important;
+    .fg input::placeholder,
+    .fg textarea::placeholder {
+      color: #475569 !important;
       opacity: 1;
     }
+    .fg select {
+      color: #f1f5f9 !important;
+    }
+    .fg select option {
+      background: #1e293b;
+      color: #f1f5f9;
+    }
     .fg input[readonly] {
-      background: rgba(255,255,255,0.03);
-      border-color: rgba(255,255,255,0.06);
-      color: #9ca3af !important;
+      background: #0f172a !important;
+      border-color: #1e293b !important;
+      color: #64748b !important;
       cursor: not-allowed;
     }
-    .fg input:focus:not([readonly]), .fg select:focus, .fg textarea:focus {
-      border-color: #4c6ef5;
-      background: rgba(76,110,245,0.08);
-      box-shadow: 0 0 0 3px rgba(76,110,245,0.15);
+    .fg input:focus:not([readonly]),
+    .fg select:focus,
+    .fg textarea:focus {
+      border-color: #4c6ef5 !important;
+      background: #1a2540 !important;
+      box-shadow: 0 0 0 3px rgba(76,110,245,0.2);
     }
-    .fg input.err { border-color: #f03e3e !important; }
-    .fg select option { background: #1f2937; }
+    .fg input.err { border-color: #f87171 !important; }
     .fg textarea { resize: vertical; min-height: 70px; }
 
     .ferr {
       font-size: 0.7rem;
-      color: #ff6b6b;
+      color: #f87171;
       display: none;
       margin-top: 2px;
     }
@@ -156,19 +174,19 @@
 
     .fhint {
       font-size: 0.68rem;
-      color: #4b5563;
+      color: #475569;
       margin-top: 2px;
     }
 
     /* Info banner */
     .info-banner {
-      background: rgba(76,110,245,0.08);
-      border: 1px solid rgba(76,110,245,0.2);
+      background: rgba(76,110,245,0.1);
+      border: 1px solid rgba(76,110,245,0.25);
       border-radius: 10px;
       padding: 0.75rem 1rem;
       margin-bottom: 1rem;
       font-size: 0.8rem;
-      color: #91a7ff;
+      color: #818cf8;
       display: flex;
       gap: 0.5rem;
       align-items: flex-start;
@@ -185,29 +203,30 @@
     @media (max-width: 480px) { .acc-type-cards { grid-template-columns: 1fr; } }
 
     .acc-type-card {
-      border: 2px solid rgba(255,255,255,0.08);
+      border: 2px solid #334155;
       border-radius: 12px;
       padding: 1rem;
       cursor: pointer;
       transition: all 0.2s;
       position: relative;
+      background: #1e293b;
     }
-    .acc-type-card:hover { border-color: rgba(76,110,245,0.4); }
+    .acc-type-card:hover { border-color: rgba(76,110,245,0.5); }
     .acc-type-card.selected {
       border-color: #4c6ef5;
-      background: rgba(76,110,245,0.08);
+      background: rgba(76,110,245,0.1);
     }
     .acc-type-card input[type="radio"] {
       position: absolute; opacity: 0; pointer-events: none;
     }
     .atc-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
     .atc-name { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.25rem; }
-    .atc-rate { font-size: 0.75rem; color: #51cf66; font-weight: 600; margin-bottom: 0.35rem; }
-    .atc-desc { font-size: 0.72rem; color: #9ca3af; line-height: 1.4; }
+    .atc-rate { font-size: 0.75rem; color: #34d399; font-weight: 600; margin-bottom: 0.35rem; }
+    .atc-desc { font-size: 0.72rem; color: #94a3b8; line-height: 1.4; }
     .atc-badge {
       display: inline-block;
       background: rgba(76,110,245,0.2);
-      color: #748ffc;
+      color: #818cf8;
       font-size: 0.65rem;
       font-weight: 700;
       border-radius: 4px;
@@ -215,20 +234,20 @@
       margin-top: 0.4rem;
     }
 
-    /* Checkbox row */
+    /* Checkbox rows */
     .check-row {
       display: flex;
       align-items: center;
       gap: 0.65rem;
       padding: 0.75rem 1rem;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.07);
+      background: #1e293b;
+      border: 1px solid #334155;
       border-radius: 10px;
       cursor: pointer;
       margin-bottom: 0.5rem;
       transition: background 0.2s;
     }
-    .check-row:hover { background: rgba(255,255,255,0.05); }
+    .check-row:hover { background: #243147; }
     .check-row input[type="checkbox"] {
       width: 16px; height: 16px;
       accent-color: #4c6ef5;
@@ -236,21 +255,21 @@
       flex-shrink: 0;
     }
     .check-row .cr-text { flex: 1; }
-    .check-row .cr-title { font-size: 0.85rem; font-weight: 600; color: #f1f5f9; }
-    .check-row .cr-sub   { font-size: 0.72rem; color: #9ca3af; margin-top: 2px; }
+    .check-row .cr-title { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; }
+    .check-row .cr-sub   { font-size: 0.72rem; color: #64748b; margin-top: 2px; }
 
-    /* KYC doc section */
+    /* KYC doc group */
     .kyc-group {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: #1e293b;
+      border: 1px solid #334155;
       border-radius: 12px;
       padding: 1rem;
       margin-bottom: 0.75rem;
     }
     .kyc-group-title {
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       font-weight: 700;
-      color: #9ca3af;
+      color: #94a3b8;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 0.75rem;
@@ -260,7 +279,7 @@
     .modal-footer {
       position: sticky;
       bottom: 0;
-      background: var(--bg-card, #111827);
+      background: #0f172a;
       border-top: 1px solid rgba(255,255,255,0.07);
       padding: 1rem 1.6rem;
       display: flex;
@@ -271,7 +290,7 @@
     .modal-footer .btn { min-width: 120px; }
     .modal-footer .step-info {
       font-size: 0.75rem;
-      color: #4b5563;
+      color: #64748b;
     }
   </style>
 </head>
