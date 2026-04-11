@@ -121,16 +121,20 @@
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 10px;
-      color: #f1f5f9;
+      color: #f1f5f9 !important;
       font-size: 0.88rem;
       font-family: inherit;
       transition: all 0.2s;
       outline: none;
     }
+    .fg input::placeholder, .fg textarea::placeholder {
+      color: #6b7280 !important;
+      opacity: 1;
+    }
     .fg input[readonly] {
       background: rgba(255,255,255,0.03);
       border-color: rgba(255,255,255,0.06);
-      color: #6b7280;
+      color: #9ca3af !important;
       cursor: not-allowed;
     }
     .fg input:focus:not([readonly]), .fg select:focus, .fg textarea:focus {
@@ -199,7 +203,7 @@
     .atc-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
     .atc-name { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.25rem; }
     .atc-rate { font-size: 0.75rem; color: #51cf66; font-weight: 600; margin-bottom: 0.35rem; }
-    .atc-desc { font-size: 0.72rem; color: #6b7280; line-height: 1.4; }
+    .atc-desc { font-size: 0.72rem; color: #9ca3af; line-height: 1.4; }
     .atc-badge {
       display: inline-block;
       background: rgba(76,110,245,0.2);
@@ -233,7 +237,7 @@
     }
     .check-row .cr-text { flex: 1; }
     .check-row .cr-title { font-size: 0.85rem; font-weight: 600; color: #f1f5f9; }
-    .check-row .cr-sub   { font-size: 0.72rem; color: #6b7280; margin-top: 2px; }
+    .check-row .cr-sub   { font-size: 0.72rem; color: #9ca3af; margin-top: 2px; }
 
     /* KYC doc section */
     .kyc-group {
@@ -703,13 +707,25 @@ const totalSteps = 3;
 
 const stepInfo = ['Personal Details', 'Account Details', 'KYC Documents'];
 
-function openNewAccModal() {
-  // Prefill readonly fields from Auth
+async function openNewAccModal() {
+  // Prefill readonly fields from Auth (basic info)
   const user = Auth.getUser();
   if (user) {
     document.getElementById('accFullName').value = user.fullName || '';
     document.getElementById('accEmail').value    = user.email   || '';
-    document.getElementById('accPhone').value    = user.phone   || '';
+  }
+
+  // Fetch complete profile data including phone from API
+  try {
+    const profileData = await API.call('/profile');
+    if (profileData && profileData.phone) {
+      document.getElementById('accPhone').value = '+91 ' + profileData.phone;
+    } else {
+      document.getElementById('accPhone').value = 'Not available';
+    }
+  } catch (err) {
+    console.error('Failed to load phone:', err);
+    document.getElementById('accPhone').value = 'Not available';
   }
 
   // Set max DOB (must be at least 18 years old)
