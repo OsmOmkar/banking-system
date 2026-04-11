@@ -4,7 +4,272 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Accounts — JavaBank</title>
+  <meta name="description" content="Manage and open bank accounts with JavaBank's secure portal.">
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Modal Overrides (wider, multi-section) ─── */
+    #newAccModal .modal {
+      max-width: 680px;
+      width: 95vw;
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 0;
+      border-radius: 18px;
+    }
+
+    .modal-header {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card, #111827);
+      z-index: 10;
+      padding: 1.25rem 1.6rem 0.75rem;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .modal-header h2 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      margin: 0 0 0.2rem;
+    }
+    .modal-header p {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    /* Step progress bar */
+    .form-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 1rem 1.6rem 0.8rem;
+      background: var(--bg-card, #111827);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .fstep {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+    .fstep-dot {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.74rem; font-weight: 700; color: #4b5563;
+      transition: all 0.3s;
+    }
+    .fstep-dot.active { border-color: #4c6ef5; color: #4c6ef5; background: rgba(76,110,245,0.12); }
+    .fstep-dot.done   { border-color: #2f9e44; color: #fff; background: #2f9e44; }
+    .fstep-label { font-size: 0.62rem; color: #4b5563; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+    .fstep-label.active { color: #748ffc; }
+    .fstep-line { flex: 1; height: 1px; background: rgba(255,255,255,0.08); margin-bottom: 18px; }
+    .fstep-line.done { background: #2f9e44; }
+
+    /* Section body */
+    .form-section {
+      padding: 1.4rem 1.6rem;
+      display: none;
+    }
+    .form-section.active { display: block; }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #748ffc;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(116,143,252,0.2);
+    }
+
+    /* Form fields */
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .frow.single { grid-template-columns: 1fr; }
+    .frow.triple { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 560px) {
+      .frow, .frow.triple { grid-template-columns: 1fr; }
+    }
+
+    .fg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fg label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .fg label .req { color: #f03e3e; margin-left: 2px; }
+    .fg label .opt { color: #4b5563; font-weight: 400; text-transform: none; font-size: 0.68rem; }
+
+    .fg input, .fg select, .fg textarea {
+      padding: 0.62rem 0.85rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: #f1f5f9;
+      font-size: 0.88rem;
+      font-family: inherit;
+      transition: all 0.2s;
+      outline: none;
+    }
+    .fg input[readonly] {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.06);
+      color: #6b7280;
+      cursor: not-allowed;
+    }
+    .fg input:focus:not([readonly]), .fg select:focus, .fg textarea:focus {
+      border-color: #4c6ef5;
+      background: rgba(76,110,245,0.08);
+      box-shadow: 0 0 0 3px rgba(76,110,245,0.15);
+    }
+    .fg input.err { border-color: #f03e3e !important; }
+    .fg select option { background: #1f2937; }
+    .fg textarea { resize: vertical; min-height: 70px; }
+
+    .ferr {
+      font-size: 0.7rem;
+      color: #ff6b6b;
+      display: none;
+      margin-top: 2px;
+    }
+    .ferr.show { display: block; }
+
+    .fhint {
+      font-size: 0.68rem;
+      color: #4b5563;
+      margin-top: 2px;
+    }
+
+    /* Info banner */
+    .info-banner {
+      background: rgba(76,110,245,0.08);
+      border: 1px solid rgba(76,110,245,0.2);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.8rem;
+      color: #91a7ff;
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      line-height: 1.5;
+    }
+
+    /* Account type cards */
+    .acc-type-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    @media (max-width: 480px) { .acc-type-cards { grid-template-columns: 1fr; } }
+
+    .acc-type-card {
+      border: 2px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .acc-type-card:hover { border-color: rgba(76,110,245,0.4); }
+    .acc-type-card.selected {
+      border-color: #4c6ef5;
+      background: rgba(76,110,245,0.08);
+    }
+    .acc-type-card input[type="radio"] {
+      position: absolute; opacity: 0; pointer-events: none;
+    }
+    .atc-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
+    .atc-name { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.25rem; }
+    .atc-rate { font-size: 0.75rem; color: #51cf66; font-weight: 600; margin-bottom: 0.35rem; }
+    .atc-desc { font-size: 0.72rem; color: #6b7280; line-height: 1.4; }
+    .atc-badge {
+      display: inline-block;
+      background: rgba(76,110,245,0.2);
+      color: #748ffc;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-top: 0.4rem;
+    }
+
+    /* Checkbox row */
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+      transition: background 0.2s;
+    }
+    .check-row:hover { background: rgba(255,255,255,0.05); }
+    .check-row input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: #4c6ef5;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .check-row .cr-text { flex: 1; }
+    .check-row .cr-title { font-size: 0.85rem; font-weight: 600; color: #f1f5f9; }
+    .check-row .cr-sub   { font-size: 0.72rem; color: #6b7280; margin-top: 2px; }
+
+    /* KYC doc section */
+    .kyc-group {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .kyc-group-title {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Modal footer */
+    .modal-footer {
+      position: sticky;
+      bottom: 0;
+      background: var(--bg-card, #111827);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 1rem 1.6rem;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-footer .btn { min-width: 120px; }
+    .modal-footer .step-info {
+      font-size: 0.75rem;
+      color: #4b5563;
+    }
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -16,7 +281,7 @@
         <h1>My Accounts 💳</h1>
         <p>Manage your savings and current accounts</p>
       </div>
-      <button class="btn btn-primary" onclick="openNewAccModal()">+ New Account</button>
+      <button class="btn btn-primary" onclick="openNewAccModal()">+ Open New Account</button>
     </div>
 
     <div id="alertBox"></div>
@@ -53,33 +318,304 @@
   </main>
 </div>
 
-<!-- New Account Modal -->
+<!-- ══════════════════════════════════════════════
+     NEW ACCOUNT MODAL — 3-Step Real Banking Flow
+══════════════════════════════════════════════ -->
 <div class="modal-overlay" id="newAccModal">
   <div class="modal">
-    <div class="modal-title">
-      Open New Account
-      <button class="modal-close" onclick="closeNewAccModal()">✕</button>
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h2>🏦 Open a New Bank Account</h2>
+          <p>Complete the KYC process as per RBI guidelines</p>
+        </div>
+        <button class="modal-close" onclick="closeNewAccModal()" style="margin-top:2px">✕</button>
+      </div>
     </div>
-    <div id="modalAlert"></div>
-    <div class="form-group">
-      <label>Account Type</label>
-      <select id="accType">
-        <option value="SAVINGS">Savings Account (4.5% interest)</option>
-        <option value="CURRENT">Current Account (₹10,000 overdraft)</option>
-      </select>
+
+    <!-- Step progress -->
+    <div class="form-steps" id="formSteps">
+      <div class="fstep">
+        <div class="fstep-dot active" id="fdot1">1</div>
+        <div class="fstep-label active" id="flbl1">Personal</div>
+      </div>
+      <div class="fstep-line" id="fline1"></div>
+      <div class="fstep">
+        <div class="fstep-dot" id="fdot2">2</div>
+        <div class="fstep-label" id="flbl2">Account</div>
+      </div>
+      <div class="fstep-line" id="fline2"></div>
+      <div class="fstep">
+        <div class="fstep-dot" id="fdot3">3</div>
+        <div class="fstep-label" id="flbl3">KYC Docs</div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Initial Deposit (₹)</label>
-      <input type="number" id="initialDeposit" placeholder="0" min="0">
+
+    <div id="modalAlert" style="padding:0 1.6rem"></div>
+
+    <!-- ══ SECTION 1: Personal Details ══ -->
+    <div class="form-section active" id="fsec1">
+      <div class="section-title">👤 Personal Details</div>
+
+      <div class="info-banner">
+        ℹ️ Your basic information is pre-filled from your registered account. Please verify and complete any missing fields.
+      </div>
+
+      <!-- Name (read-only) -->
+      <div class="frow">
+        <div class="fg">
+          <label>Full Name</label>
+          <input type="text" id="accFullName" readonly placeholder="Loading...">
+        </div>
+        <div class="fg">
+          <label>Date of Birth <span class="req">*</span></label>
+          <input type="date" id="accDob" max="" oninput="clearFErr('accDob','dobErr')">
+          <span class="ferr" id="dobErr">Date of birth is required</span>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="fg">
+          <label>Registered Email</label>
+          <input type="text" id="accEmail" readonly placeholder="Loading...">
+        </div>
+        <div class="fg">
+          <label>Registered Mobile</label>
+          <input type="text" id="accPhone" readonly placeholder="Loading...">
+        </div>
+      </div>
+
+      <!-- Address -->
+      <div class="frow single">
+        <div class="fg">
+          <label>Residential Address <span class="req">*</span></label>
+          <textarea id="accAddress" placeholder="House No., Street, Area, City, State — PIN Code" oninput="clearFErr('accAddress','addrErr')"></textarea>
+          <span class="ferr" id="addrErr">Address is required</span>
+        </div>
+      </div>
+
+      <div class="frow triple">
+        <div class="fg">
+          <label>City <span class="req">*</span></label>
+          <input type="text" id="accCity" placeholder="Mumbai" oninput="clearFErr('accCity','cityErr')">
+          <span class="ferr" id="cityErr">City is required</span>
+        </div>
+        <div class="fg">
+          <label>State <span class="req">*</span></label>
+          <select id="accState" onchange="clearFErr('accState','stateErr')">
+            <option value="">Select state</option>
+            <option>Andhra Pradesh</option><option>Arunachal Pradesh</option>
+            <option>Assam</option><option>Bihar</option><option>Chhattisgarh</option>
+            <option>Goa</option><option>Gujarat</option><option>Haryana</option>
+            <option>Himachal Pradesh</option><option>Jharkhand</option>
+            <option>Karnataka</option><option>Kerala</option>
+            <option>Madhya Pradesh</option><option>Maharashtra</option>
+            <option>Manipur</option><option>Meghalaya</option><option>Mizoram</option>
+            <option>Nagaland</option><option>Odisha</option><option>Punjab</option>
+            <option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option>
+            <option>Telangana</option><option>Tripura</option>
+            <option>Uttar Pradesh</option><option>Uttarakhand</option>
+            <option>West Bengal</option>
+            <option>Delhi</option><option>Jammu &amp; Kashmir</option>
+            <option>Ladakh</option><option>Chandigarh</option>
+            <option>Puducherry</option>
+          </select>
+          <span class="ferr" id="stateErr">State is required</span>
+        </div>
+        <div class="fg">
+          <label>PIN Code <span class="req">*</span></label>
+          <input type="text" id="accPin" placeholder="400001" maxlength="6" oninput="this.value=this.value.replace(/\D/g,''); clearFErr('accPin','pinErr')">
+          <span class="ferr" id="pinErr">Valid 6-digit PIN required</span>
+        </div>
+      </div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn btn-primary btn-full" id="createAccBtn" onclick="createAccount()">
-        Open Account
-      </button>
-      <button class="btn btn-outline" onclick="closeNewAccModal()">Cancel</button>
+
+    <!-- ══ SECTION 2: Account Details ══ -->
+    <div class="form-section" id="fsec2">
+      <div class="section-title">💳 Account Details</div>
+
+      <!-- Account Type -->
+      <div style="margin-bottom:1rem">
+        <div class="fg" style="margin-bottom:0.6rem">
+          <label>Select Account Type <span class="req">*</span></label>
+        </div>
+        <div class="acc-type-cards">
+          <label class="acc-type-card selected" id="cardSavings" onclick="selectAccType('SAVINGS')">
+            <input type="radio" name="accTypeRadio" value="SAVINGS" id="radioSavings" checked>
+            <div class="atc-icon">🏦</div>
+            <div class="atc-name">Savings Account</div>
+            <div class="atc-rate">📈 2.5% p.a. Interest</div>
+            <div class="atc-desc">Best for individuals saving money regularly. Earn interest on your balance.</div>
+            <div class="atc-badge">RECOMMENDED</div>
+          </label>
+          <label class="acc-type-card" id="cardCurrent" onclick="selectAccType('CURRENT')">
+            <input type="radio" name="accTypeRadio" value="CURRENT" id="radioCurrent">
+            <div class="atc-icon">🏢</div>
+            <div class="atc-name">Current Account</div>
+            <div class="atc-rate">💳 ₹10,000 Overdraft Facility</div>
+            <div class="atc-desc">Ideal for businesses and frequent transactions. No interest, overdraft available.</div>
+            <div class="atc-badge">BUSINESS</div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Initial Deposit -->
+      <div class="frow">
+        <div class="fg">
+          <label>Initial Deposit Amount (₹) <span class="req">*</span></label>
+          <input type="number" id="initialDeposit" placeholder="Minimum ₹500" min="500" oninput="clearFErr('initialDeposit','depositErr')">
+          <span class="ferr" id="depositErr">Minimum deposit is ₹500</span>
+          <span class="fhint" id="depositHint">Savings: min ₹500 | Current: min ₹5,000</span>
+        </div>
+        <div class="fg">
+          <label>Purpose of Account <span class="req">*</span></label>
+          <select id="accPurpose" onchange="clearFErr('accPurpose','purposeErr')">
+            <option value="">Select purpose</option>
+            <option>Personal Savings</option>
+            <option>Business Transactions</option>
+            <option>Salary Account</option>
+            <option>Investment</option>
+            <option>Education Expenses</option>
+            <option>Other</option>
+          </select>
+          <span class="ferr" id="purposeErr">Please select account purpose</span>
+        </div>
+      </div>
+
+      <!-- Debit Card -->
+      <div style="margin-bottom:0.5rem">
+        <label class="check-row" for="wantDebitCard">
+          <input type="checkbox" id="wantDebitCard" checked>
+          <div class="cr-text">
+            <div class="cr-title">💳 Request Debit Card</div>
+            <div class="cr-sub">A RuPay / Visa debit card will be delivered to your registered address within 7–10 working days.</div>
+          </div>
+        </label>
+        <label class="check-row" for="wantNetBanking">
+          <input type="checkbox" id="wantNetBanking" checked>
+          <div class="cr-text">
+            <div class="cr-title">🌐 Enable Net Banking</div>
+            <div class="cr-sub">Access your account online, view statements, and make transfers 24×7.</div>
+          </div>
+        </label>
+        <label class="check-row" for="wantMobileBanking">
+          <input type="checkbox" id="wantMobileBanking" checked>
+          <div class="cr-text">
+            <div class="cr-title">📱 Enable UPI / Mobile Banking</div>
+            <div class="cr-sub">Register your number for UPI payments and mobile banking alerts.</div>
+          </div>
+        </label>
+      </div>
     </div>
-  </div>
-</div>
+
+    <!-- ══ SECTION 3: KYC Documents ══ -->
+    <div class="form-section" id="fsec3">
+      <div class="section-title">📋 KYC — Document Details</div>
+
+      <div class="info-banner">
+        ℹ️ As per RBI KYC norms, you must provide valid Proof of Identity and Proof of Address. Enter the document numbers only — no uploads required.
+      </div>
+
+      <!-- Identity Proof -->
+      <div class="kyc-group">
+        <div class="kyc-group-title">🪪 Proof of Identity (POI)</div>
+        <div class="frow">
+          <div class="fg">
+            <label>PAN Card Number <span class="req">*</span></label>
+            <input type="text" id="panCard"
+              placeholder="ABCDE1234F"
+              maxlength="10"
+              style="text-transform:uppercase"
+              oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); clearFErr('panCard','panErr')">
+            <span class="ferr" id="panErr">Enter valid 10-char PAN (e.g. ABCDE1234F)</span>
+            <span class="fhint">Format: 5 letters + 4 digits + 1 letter</span>
+          </div>
+          <div class="fg">
+            <label>Aadhaar Card Number <span class="req">*</span></label>
+            <input type="text" id="aadhaarCard"
+              placeholder="1234 5678 9012"
+              maxlength="14"
+              oninput="fmtAadhaar(this); clearFErr('aadhaarCard','aadhaarErr')">
+            <span class="ferr" id="aadhaarErr">Enter valid 12-digit Aadhaar number</span>
+            <span class="fhint">12 digits only — no letters or symbols</span>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg">
+            <label>Passport Number <span class="opt">(optional)</span></label>
+            <input type="text" id="passportNo"
+              placeholder="A1234567"
+              maxlength="8"
+              style="text-transform:uppercase"
+              oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+            <span class="fhint">8 characters (1 letter + 7 digits)</span>
+          </div>
+          <div class="fg">
+            <label>Driving License No. <span class="opt">(optional)</span></label>
+            <input type="text" id="drivingLicense"
+              placeholder="MH0120210012345"
+              maxlength="16"
+              style="text-transform:uppercase"
+              oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+          </div>
+        </div>
+      </div>
+
+      <!-- Address Proof -->
+      <div class="kyc-group">
+        <div class="kyc-group-title">🏠 Proof of Address (POA)</div>
+
+        <div class="frow">
+          <div class="fg">
+            <label>POA Document Type <span class="req">*</span></label>
+            <select id="poaType" onchange="clearFErr('poaType','poaTypeErr')">
+              <option value="">Select document</option>
+              <option value="AADHAAR">Aadhaar Card (auto-filled from above)</option>
+              <option value="PASSPORT">Passport</option>
+              <option value="VOTER_ID">Voter ID Card</option>
+              <option value="UTILITY_ELECTRICITY">Electricity Bill</option>
+              <option value="UTILITY_WATER">Water Bill</option>
+              <option value="UTILITY_TELEPHONE">Telephone / Broadband Bill</option>
+            </select>
+            <span class="ferr" id="poaTypeErr">Please select a document for address proof</span>
+          </div>
+          <div class="fg">
+            <label>Voter ID Number <span class="opt">(optional)</span></label>
+            <input type="text" id="voterIdNo"
+              placeholder="ABC1234567"
+              maxlength="10"
+              style="text-transform:uppercase"
+              oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+            <span class="fhint">10 characters (3 letters + 7 digits)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Declaration -->
+      <label class="check-row" for="declareCheck" style="border-color:rgba(76,110,245,0.3)">
+        <input type="checkbox" id="declareCheck" onchange="clearFErr('declareCheck','declErr')">
+        <div class="cr-text">
+          <div class="cr-title" style="font-size:0.8rem">
+            I declare that the information provided above is true, correct and complete to the best of my knowledge and belief. I consent to JavaBank verifying these details as per KYC norms.
+          </div>
+        </div>
+      </label>
+      <span class="ferr" id="declErr" style="display:none;margin-top:4px">You must accept the declaration to proceed.</span>
+    </div>
+
+    <!-- Footer navigation -->
+    <div class="modal-footer">
+      <div class="step-info" id="stepInfo">Step 1 of 3 — Personal Details</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-outline" id="backBtn" onclick="fsBack()" style="display:none">← Back</button>
+        <button class="btn btn-primary" id="nextBtn" onclick="fsNext()">Next →</button>
+      </div>
+    </div>
+
+  </div><!-- /modal -->
+</div><!-- /modal-overlay -->
 
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
@@ -87,110 +623,303 @@
 Auth.requireAuth();
 renderSidebar("accounts");
 
+/* ── Load accounts list ─────────────────────── */
 async function loadAccounts() {
-    try {
-        const accounts = await API.call("/accounts");
-        const grid = document.getElementById("accountsGrid");
+  try {
+    const accounts = await API.call("/accounts");
+    const grid = document.getElementById("accountsGrid");
 
-        if (accounts.length === 0) {
-            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-              <div class="icon">💳</div>
-              <p>No accounts yet. Create your first account!</p>
-            </div>`;
-            return;
-        }
-
-        grid.innerHTML = accounts.map(a => `
-          <div class="account-card ${a.accountType === 'CURRENT' ? 'current' : ''}"
-               onclick="showDetail(${JSON.stringify(a).replace(/"/g,'&quot;')})">
-            <div class="acc-type">${a.accountType} Account</div>
-            <div class="acc-bal">${fmt(a.balance)}</div>
-            <div class="acc-num">${a.accountNumber}</div>
-            <div class="acc-sub">
-              ${a.accountType === 'SAVINGS'
-                ? `Monthly Interest: ${fmt(a.interest)}`
-                : `Overdraft Available: ${fmt(a.overdraftLimit)}`}
-            </div>
-          </div>`).join("");
-    } catch(e) {
-        document.getElementById("alertBox").innerHTML =
-          `<div class="alert alert-error">Failed to load accounts: ${e.message}</div>`;
+    if (accounts.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="icon">💳</div>
+        <p>No accounts yet. Open your first account!</p>
+      </div>`;
+      return;
     }
+
+    grid.innerHTML = accounts.map(a => `
+      <div class="account-card ${a.accountType === 'CURRENT' ? 'current' : ''}"
+           onclick="showDetail(${JSON.stringify(a).replace(/"/g,'&quot;')})">
+        <div class="acc-type">${a.accountType} Account</div>
+        <div class="acc-bal">${fmt(a.balance)}</div>
+        <div class="acc-num">${a.accountNumber}</div>
+        <div class="acc-sub">
+          ${a.accountType === 'SAVINGS'
+            ? `Interest p.a.: 2.5% | Monthly: ${fmt(a.interest)}`
+            : `Overdraft Available: ${fmt(a.overdraftLimit)}`}
+        </div>
+      </div>`).join("");
+  } catch(e) {
+    document.getElementById("alertBox").innerHTML =
+      `<div class="alert alert-error">Failed to load accounts: ${e.message}</div>`;
+  }
 }
 
 function showDetail(acc) {
-    document.getElementById("detailCard").style.display = "";
-    document.getElementById("detailTitle").textContent =
-      `${acc.accountType} Account — ${acc.accountNumber}`;
-    document.getElementById("detailContent").innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div>
-          <div style="font-size:.8rem;color:#6b7280">Account Number</div>
-          <div style="font-weight:600;margin-top:4px">${acc.accountNumber}</div>
-        </div>
-        <div>
-          <div style="font-size:.8rem;color:#6b7280">Account Type</div>
-          <div style="font-weight:600;margin-top:4px">${acc.accountType}</div>
-        </div>
-        <div>
-          <div style="font-size:.8rem;color:#6b7280">Current Balance</div>
-          <div style="font-weight:700;font-size:1.3rem;color:var(--primary);margin-top:4px">${fmt(acc.balance)}</div>
-        </div>
-        <div>
-          <div style="font-size:.8rem;color:#6b7280">${acc.accountType === 'SAVINGS' ? 'Monthly Interest Earned' : 'Overdraft Limit'}</div>
-          <div style="font-weight:600;margin-top:4px;color:var(--success)">
-            ${acc.accountType === 'SAVINGS' ? fmt(acc.interest) : fmt(acc.overdraftLimit)}
-          </div>
+  document.getElementById("detailCard").style.display = "";
+  document.getElementById("detailTitle").textContent =
+    `${acc.accountType} Account — ${acc.accountNumber}`;
+  document.getElementById("detailContent").innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:.8rem;color:#6b7280">Account Number</div>
+        <div style="font-weight:600;margin-top:4px">${acc.accountNumber}</div>
+      </div>
+      <div>
+        <div style="font-size:.8rem;color:#6b7280">Account Type</div>
+        <div style="font-weight:600;margin-top:4px">${acc.accountType}</div>
+      </div>
+      <div>
+        <div style="font-size:.8rem;color:#6b7280">Current Balance</div>
+        <div style="font-weight:700;font-size:1.3rem;color:var(--primary);margin-top:4px">${fmt(acc.balance)}</div>
+      </div>
+      <div>
+        <div style="font-size:.8rem;color:#6b7280">${acc.accountType === 'SAVINGS' ? 'Monthly Interest Earned' : 'Overdraft Limit'}</div>
+        <div style="font-weight:600;margin-top:4px;color:var(--success)">
+          ${acc.accountType === 'SAVINGS' ? fmt(acc.interest) : fmt(acc.overdraftLimit)}
         </div>
       </div>
-      <div style="margin-top:16px;display:flex;gap:10px">
-        <button class="btn btn-primary btn-sm"
-          onclick="window.location.href='transactions.html?accountId=${acc.id}'">
-          View Transactions
-        </button>
-        <button class="btn btn-outline btn-sm"
-          onclick="window.location.href='fraud.html?accountId=${acc.id}'">
-          Fraud Alerts
-        </button>
-      </div>`;
-    document.getElementById("detailCard").scrollIntoView({ behavior: "smooth" });
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-primary btn-sm"
+        onclick="window.location.href='transactions.html?accountId=${acc.id}'">
+        View Transactions
+      </button>
+      <button class="btn btn-outline btn-sm"
+        onclick="window.location.href='fraud.html?accountId=${acc.id}'">
+        Fraud Alerts
+      </button>
+    </div>`;
+  document.getElementById("detailCard").scrollIntoView({ behavior: "smooth" });
 }
 
 function hideDetail() {
-    document.getElementById("detailCard").style.display = "none";
+  document.getElementById("detailCard").style.display = "none";
 }
 
+/* ── Format currency ─────────────────────────── */
+function fmt(n) {
+  return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+/* ── Multi-step form logic ───────────────────── */
+let currentStep = 1;
+const totalSteps = 3;
+
+const stepInfo = ['Personal Details', 'Account Details', 'KYC Documents'];
+
 function openNewAccModal() {
-    document.getElementById("newAccModal").classList.add("open");
+  // Prefill readonly fields from Auth
+  const user = Auth.getUser();
+  if (user) {
+    document.getElementById('accFullName').value = user.fullName || '';
+    document.getElementById('accEmail').value    = user.email   || '';
+    document.getElementById('accPhone').value    = user.phone   || '';
+  }
+
+  // Set max DOB (must be at least 18 years old)
+  const today = new Date();
+  today.setFullYear(today.getFullYear() - 18);
+  document.getElementById('accDob').max = today.toISOString().split('T')[0];
+
+  currentStep = 1;
+  showFStep(1);
+  document.getElementById("newAccModal").classList.add("open");
+  document.getElementById("modalAlert").innerHTML = "";
 }
 
 function closeNewAccModal() {
-    document.getElementById("newAccModal").classList.remove("open");
-    document.getElementById("modalAlert").innerHTML = "";
+  document.getElementById("newAccModal").classList.remove("open");
+  document.getElementById("modalAlert").innerHTML = "";
 }
 
-async function createAccount() {
-    const btn  = document.getElementById("createAccBtn");
-    const type = document.getElementById("accType").value;
-    const init = parseFloat(document.getElementById("initialDeposit").value || 0);
+function showFStep(n) {
+  currentStep = n;
+  for (let i = 1; i <= totalSteps; i++) {
+    document.getElementById('fsec' + i).classList.toggle('active', i === n);
 
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loader"></span> Creating...';
+    const dot = document.getElementById('fdot' + i);
+    const lbl = document.getElementById('flbl' + i);
+    dot.classList.remove('active', 'done');
+    lbl.classList.remove('active');
 
-    try {
-        await API.call("/accounts", "POST", { type, initialDeposit: init });
-        closeNewAccModal();
-        await loadAccounts();
-        document.getElementById("alertBox").innerHTML =
-          `<div class="alert alert-success">✅ Account created successfully!</div>`;
-        setTimeout(() => document.getElementById("alertBox").innerHTML = "", 3000);
-    } catch(e) {
-        document.getElementById("modalAlert").innerHTML =
-          `<div class="alert alert-error">${e.message}</div>`;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = "Open Account";
+    if (i < n) {
+      dot.classList.add('done');
+      dot.textContent = '✓';
+    } else if (i === n) {
+      dot.classList.add('active');
+      dot.textContent = i;
+      lbl.classList.add('active');
+    } else {
+      dot.textContent = i;
     }
+
+    if (i <= totalSteps - 1) {
+      document.getElementById('fline' + i).classList.toggle('done', i < n);
+    }
+  }
+
+  document.getElementById('stepInfo').textContent =
+    `Step ${n} of ${totalSteps} — ${stepInfo[n-1]}`;
+  document.getElementById('backBtn').style.display = n > 1 ? '' : 'none';
+
+  const nextBtn = document.getElementById('nextBtn');
+  if (n === totalSteps) {
+    nextBtn.textContent = '✅ Open Account';
+  } else {
+    nextBtn.textContent = 'Next →';
+  }
+
+  document.getElementById('modalAlert').innerHTML = '';
+}
+
+function fsBack() {
+  if (currentStep > 1) showFStep(currentStep - 1);
+}
+
+function fsNext() {
+  if (currentStep === 1 && !validateStep1()) return;
+  if (currentStep === 2 && !validateStep2()) return;
+  if (currentStep === 3) {
+    if (!validateStep3()) return;
+    submitAccount();
+    return;
+  }
+  showFStep(currentStep + 1);
+}
+
+/* ── Validators ──────────────────────────────── */
+function showFErr(id, errId) {
+  const el = document.getElementById(id);
+  const err = document.getElementById(errId);
+  if (el) el.classList.add('err');
+  if (err) err.classList.add('show');
+  return false;
+}
+function clearFErr(id, errId) {
+  const el = document.getElementById(id);
+  const err = document.getElementById(errId);
+  if (el) el.classList.remove('err');
+  if (err) err.classList.remove('show');
+}
+function showModalAlert(msg, type='error') {
+  document.getElementById('modalAlert').innerHTML =
+    `<div class="alert alert-${type}" style="margin:0.5rem 1.6rem">${msg}</div>`;
+}
+
+function validateStep1() {
+  let ok = true;
+  const dob = document.getElementById('accDob').value;
+  if (!dob) { showFErr('accDob', 'dobErr'); ok = false; }
+  else {
+    const age = (new Date() - new Date(dob)) / (365.25 * 24 * 3600 * 1000);
+    if (age < 18) {
+      document.getElementById('dobErr').textContent = 'You must be at least 18 years old';
+      showFErr('accDob', 'dobErr'); ok = false;
+    } else {
+      document.getElementById('dobErr').textContent = 'Date of birth is required';
+    }
+  }
+  if (!document.getElementById('accAddress').value.trim()) { showFErr('accAddress', 'addrErr'); ok = false; }
+  if (!document.getElementById('accCity').value.trim())    { showFErr('accCity', 'cityErr'); ok = false; }
+  if (!document.getElementById('accState').value)          { showFErr('accState', 'stateErr'); ok = false; }
+
+  const pin = document.getElementById('accPin').value;
+  if (!/^[1-9][0-9]{5}$/.test(pin)) { showFErr('accPin', 'pinErr'); ok = false; }
+
+  if (!ok) showModalAlert('Please fill in all required personal details.');
+  return ok;
+}
+
+function validateStep2() {
+  let ok = true;
+  const type = document.querySelector('input[name="accTypeRadio"]:checked').value;
+  const minDeposit = type === 'SAVINGS' ? 500 : 5000;
+  const init = parseFloat(document.getElementById('initialDeposit').value || 0);
+
+  if (!init || init < minDeposit) {
+    document.getElementById('depositErr').textContent =
+      `Minimum deposit for ${type === 'SAVINGS' ? 'Savings' : 'Current'} account is ₹${minDeposit.toLocaleString('en-IN')}`;
+    showFErr('initialDeposit', 'depositErr'); ok = false;
+  }
+  if (!document.getElementById('accPurpose').value) { showFErr('accPurpose', 'purposeErr'); ok = false; }
+  if (!ok) showModalAlert('Please fill in all required account details.');
+  return ok;
+}
+
+function validateStep3() {
+  let ok = true;
+
+  const pan = document.getElementById('panCard').value.trim();
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) {
+    document.getElementById('panErr').textContent = 'Invalid PAN format. Must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)';
+    showFErr('panCard', 'panErr'); ok = false;
+  }
+
+  const aadhaar = document.getElementById('aadhaarCard').value.replace(/\s/g,'');
+  if (!/^[0-9]{12}$/.test(aadhaar)) { showFErr('aadhaarCard', 'aadhaarErr'); ok = false; }
+
+  if (!document.getElementById('poaType').value) { showFErr('poaType', 'poaTypeErr'); ok = false; }
+
+  const decl = document.getElementById('declareCheck').checked;
+  if (!decl) {
+    document.getElementById('declErr').style.display = 'block';
+    ok = false;
+  } else {
+    document.getElementById('declErr').style.display = 'none';
+  }
+
+  if (!ok) showModalAlert('Please complete all required KYC document details.');
+  return ok;
+}
+
+/* ── Aadhaar auto-formatter ──────────────────── */
+function fmtAadhaar(el) {
+  let v = el.value.replace(/\D/g, '').substring(0, 12);
+  // Format as XXXX XXXX XXXX
+  let fmt = '';
+  for (let i = 0; i < v.length; i++) {
+    if (i === 4 || i === 8) fmt += ' ';
+    fmt += v[i];
+  }
+  el.value = fmt;
+}
+
+/* ── Account type card toggle ────────────────── */
+function selectAccType(type) {
+  document.getElementById('cardSavings').classList.toggle('selected', type === 'SAVINGS');
+  document.getElementById('cardCurrent').classList.toggle('selected', type === 'CURRENT');
+  document.getElementById('radioSavings').checked = type === 'SAVINGS';
+  document.getElementById('radioCurrent').checked = type === 'CURRENT';
+
+  const hint = document.getElementById('depositHint');
+  const minD = type === 'SAVINGS' ? 500 : 5000;
+  hint.textContent = `Minimum initial deposit: ₹${minD.toLocaleString('en-IN')}`;
+  clearFErr('initialDeposit','depositErr');
+}
+
+/* ── Submit ──────────────────────────────────── */
+async function submitAccount() {
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = true;
+  nextBtn.innerHTML = '<span class="loader"></span> Opening Account...';
+
+  const type = document.querySelector('input[name="accTypeRadio"]:checked').value;
+  const init = parseFloat(document.getElementById('initialDeposit').value || 0);
+
+  try {
+    await API.call("/accounts", "POST", { type, initialDeposit: init });
+    closeNewAccModal();
+    await loadAccounts();
+    document.getElementById("alertBox").innerHTML =
+      `<div class="alert alert-success">🎉 Account opened successfully! Your debit card and welcome kit will be sent to your registered address.</div>`;
+    setTimeout(() => document.getElementById("alertBox").innerHTML = "", 6000);
+  } catch(e) {
+    showModalAlert(e.message || 'Failed to open account. Please try again.');
+  } finally {
+    nextBtn.disabled = false;
+    nextBtn.textContent = '✅ Open Account';
+  }
 }
 
 loadAccounts();

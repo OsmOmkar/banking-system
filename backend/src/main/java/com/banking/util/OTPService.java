@@ -153,4 +153,44 @@ public class OTPService {
     public static void clearPhoneVerified(String phone) {
         verifiedPhones.remove(phone.trim());
     }
+
+    // =========================================================
+    // Short-lived "OTP verified" flags
+    // Used by the forgot-password flow so that after OTP verification
+    // the user can proceed to set a new password (within 15 minutes).
+    // =========================================================
+
+    // key -> expiry timestamp
+    private static final Map<String, Long> verifiedFlags = new ConcurrentHashMap<>();
+    private static final long FLAG_VALIDITY_MS = 15 * 60 * 1000L; // 15 minutes
+
+    /**
+     * Store a short-lived flag indicating the user successfully verified an OTP.
+     * Used by the password-reset flow.
+     */
+    public static void storeVerifiedFlag(String key) {
+        verifiedFlags.put(key, System.currentTimeMillis() + FLAG_VALIDITY_MS);
+        System.out.println("[OTPService] Stored verified flag for: " + key);
+    }
+
+    /**
+     * Check if the verified flag is set and still valid.
+     */
+    public static boolean isVerifiedFlagSet(String key) {
+        Long expiry = verifiedFlags.get(key);
+        if (expiry == null) return false;
+        if (System.currentTimeMillis() > expiry) {
+            verifiedFlags.remove(key);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Consume (clear) the verified flag after it has been used.
+     */
+    public static void clearVerifiedFlag(String key) {
+        verifiedFlags.remove(key);
+        System.out.println("[OTPService] Cleared verified flag for: " + key);
+    }
 }

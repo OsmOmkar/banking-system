@@ -402,7 +402,7 @@ public class BankingService implements TransactionProcessor,
     }
 
     public Account createAccount(int userId, String type, double initialDeposit) {
-        double interestRate   = "SAVINGS".equalsIgnoreCase(type) ? 4.5 : 0.0;
+        double interestRate   = "SAVINGS".equalsIgnoreCase(type) ? 2.5 : 0.0;
         double overdraftLimit = "CURRENT".equalsIgnoreCase(type) ? 10000.0 : 0.0;
         return accountDAO.createAccount(userId, type, initialDeposit, interestRate, overdraftLimit);
     }

@@ -3,7 +3,6 @@ package com.banking.service;
 import com.banking.model.User;
 import com.banking.util.DatabaseConnection;
 import com.banking.util.PasswordUtil;
-
 import java.sql.*;
 
 // SYLLABUS: Unit V - JDBC, Unit III - Exception handling
@@ -282,6 +281,23 @@ public class UserDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("[UserDAO] updatePhone error: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean updatePassword(int userId, String newPassword) {
+        String sql = "UPDATE users SET password_hash = ? WHERE id = ? AND is_active = TRUE";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, PasswordUtil.hash(newPassword));
+            ps.setInt(2, userId);
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                System.out.println("[UserDAO] Password updated for userId=" + userId);
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] updatePassword error: " + e.getMessage());
         }
         return false;
     }

@@ -8,7 +8,6 @@ import com.banking.util.OTPService;
 import com.banking.util.SMSService;
 import com.banking.util.ValidationUtil;
 import com.sun.net.httpserver.HttpExchange;
-
 import java.util.Map;
 
 // SYLLABUS: Unit II - Inheritance (extends BaseHandler)
@@ -48,6 +47,12 @@ public class AuthHandler extends BaseHandler {
             handleVerifyPhoneLogin(exchange, body);
         } else if ("POST".equals(method) && path.endsWith("/check-availability")) {
             handleCheckAvailability(exchange, body);
+        } else if ("POST".equals(method) && path.endsWith("/forgot-password-send-otp")) {
+            handleForgotPasswordSendOTP(exchange, body);
+        } else if ("POST".equals(method) && path.endsWith("/forgot-password-verify-otp")) {
+            handleForgotPasswordVerifyOTP(exchange, body);
+        } else if ("POST".equals(method) && path.endsWith("/forgot-password-reset")) {
+            handleForgotPasswordReset(exchange, body);
         } else {
             sendResponse(exchange, 404, JsonUtil.error("Not found"));
         }
@@ -490,6 +495,126 @@ public class AuthHandler extends BaseHandler {
             sendResponse(exchange, 400, JsonUtil.error("Too many wrong attempts. Please request a new OTP."));
         } else {
             sendResponse(exchange, 400, JsonUtil.error("Invalid or expired OTP"));
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // POST /api/auth/forgot-password-send-otp
+    // Finds user by username or email, sends OTP to their registered email.
+    // Body: { "identifier": "username_or_email" }
+    // ---------------------------------------------------------------
+    private void handleForgotPasswordSendOTP(HttpExchange exchange, String body) throws Exception {
+        Map<String, String> data = parseJson(body);
+        String identifier = data.get("identifier");
+        if (identifier == null || identifier.trim().isEmpty()) {
+            sendResponse(exchange, 400, JsonUtil.error("Enter your username or email address."));
+            return;
+        }
+        identifier = identifier.trim();
+
+        // Try to find the user by email first, then username
+        User user = userDAO.findByEmail(identifier);
+        if (user == null) user = userDAO.findByUsername(identifier);
+        if (user == null) {
+            sendResponse(exchange, 404, JsonUtil.error("No account found with that username or email."));
+            return;
+        }
+
+        String email = user.getEmail();
+        if (email == null || email.isEmpty()) {
+            sendResponse(exchange, 400, JsonUtil.error("No email address is associated with this account."));
+            return;
+        }
+
+        // Generate OTP keyed to the identifier (using userId for uniqueness)
+        String otpKey = "forgot:" + user.getId();
+        String otp = OTPService.generateOTP(otpKey);
+        EmailService.sendOTPEmail(email, user.getFullName(), otp);
+
+        // Mask email: ab***@gmail.com
+        int at = email.indexOf('@');
+        String masked = (at > 2)
+            ? email.substring(0,2) + "***" + email.charAt(at-1) + email.substring(at)
+            : email;
+
+        sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
+                JsonUtil.field("message",     "OTP sent to your registered email."),
+                JsonUtil.field("maskedEmail", masked)
+        )));
+    }
+
+    // ---------------------------------------------------------------
+    // POST /api/auth/forgot-password-verify-otp
+    // Verifies the reset OTP; sets a 15-min flag.
+    // Body: { "identifier": "...", "otp": "..." }
+    // ---------------------------------------------------------------
+    private void handleForgotPasswordVerifyOTP(HttpExchange exchange, String body) throws Exception {
+        Map<String, String> data = parseJson(body);
+        String identifier = data.get("identifier");
+        String otp        = data.get("otp");
+        if (identifier == null || otp == null) {
+            sendResponse(exchange, 400, JsonUtil.error("identifier and otp are required.")); return;
+        }
+
+        User user = userDAO.findByEmail(identifier.trim());
+        if (user == null) user = userDAO.findByUsername(identifier.trim());
+        if (user == null) {
+            sendResponse(exchange, 404, JsonUtil.error("Account not found.")); return;
+        }
+
+        String otpKey = "forgot:" + user.getId();
+        String result = OTPService.verifyOTP(otpKey, otp);
+        if ("VALID".equals(result)) {
+            OTPService.storeVerifiedFlag("forgot:verified:" + user.getId());
+            sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
+                    JsonUtil.field("message", "OTP verified. You may now set a new password.")
+            )));
+        } else if ("EXPIRED".equals(result)) {
+            sendResponse(exchange, 400, JsonUtil.error("OTP has expired. Please request a new one."));
+        } else if ("MAX_ATTEMPTS".equals(result)) {
+            sendResponse(exchange, 400, JsonUtil.error("Too many wrong attempts. Please request a new OTP."));
+        } else {
+            sendResponse(exchange, 400, JsonUtil.error("Incorrect OTP. Please try again."));
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // POST /api/auth/forgot-password-reset
+    // Resets the password after OTP has been verified.
+    // Body: { "identifier": "...", "newPassword": "..." }
+    // ---------------------------------------------------------------
+    private void handleForgotPasswordReset(HttpExchange exchange, String body) throws Exception {
+        Map<String, String> data = parseJson(body);
+        String identifier   = data.get("identifier");
+        String newPassword  = data.get("newPassword");
+        if (identifier == null || newPassword == null || newPassword.isEmpty()) {
+            sendResponse(exchange, 400, JsonUtil.error("identifier and newPassword are required.")); return;
+        }
+
+        User user = userDAO.findByEmail(identifier.trim());
+        if (user == null) user = userDAO.findByUsername(identifier.trim());
+        if (user == null) {
+            sendResponse(exchange, 404, JsonUtil.error("Account not found.")); return;
+        }
+
+        String verifiedKey = "forgot:verified:" + user.getId();
+        if (!OTPService.isVerifiedFlagSet(verifiedKey)) {
+            sendResponse(exchange, 403, JsonUtil.error("OTP not verified. Please complete verification first."));
+            return;
+        }
+
+        String err = ValidationUtil.validatePassword(newPassword);
+        if (err != null) { sendResponse(exchange, 400, JsonUtil.error(err)); return; }
+
+        boolean updated = userDAO.updatePassword(user.getId(), newPassword);
+        if (updated) {
+            OTPService.clearVerifiedFlag(verifiedKey);
+            System.out.println("[AuthHandler] Password reset for userId=" + user.getId());
+            sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
+                    JsonUtil.field("message", "Password reset successfully. You can now log in.")
+            )));
+        } else {
+            sendResponse(exchange, 500, JsonUtil.error("Failed to reset password. Please try again."));
         }
     }
 }
