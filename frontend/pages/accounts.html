@@ -697,11 +697,6 @@ function hideDetail() {
   document.getElementById("detailCard").style.display = "none";
 }
 
-/* ── Format currency ─────────────────────────── */
-function fmt(n) {
-  return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-}
-
 /* ── Multi-step form logic ───────────────────── */
 let currentStep = 1;
 const totalSteps = 3;
