@@ -77,6 +77,57 @@ public class SMSService {
     }
 
     // ---------------------------------------------------------------
+    // Send Transaction Notification SMS (success / held / confirmed / failed)
+    // ---------------------------------------------------------------
+    public static void sendTransactionSms(String toPhone, String userName,
+                                          String txType, double amount,
+                                          String statusType, String extra) {
+        // statusType: "SUCCESS", "HELD", "CONFIRMED", "FRAUD_REJECTED", "FAILED"
+        String amtStr = String.format("%.2f", amount);
+        String message;
+
+        switch (statusType) {
+            case "SUCCESS":
+                message = "JavaBank: " + txType + " of Rs." + amtStr
+                        + " successful." + (extra != null ? " " + extra : "")
+                        + " Your acct has been updated.";
+                break;
+            case "HELD":
+                message = "JAVABANK ALERT: Your " + txType + " of Rs." + amtStr
+                        + " is ON HOLD for fraud review. Open app -> Pending to approve/reject within 5 min.";
+                break;
+            case "CONFIRMED":
+                message = "JavaBank: Your held " + txType + " of Rs." + amtStr
+                        + " has been CONFIRMED and completed successfully.";
+                break;
+            case "FRAUD_REJECTED":
+                message = "JavaBank SECURITY: Suspicious " + txType + " of Rs." + amtStr
+                        + " has been BLOCKED. Your money is SAFE. Fraud reported.";
+                break;
+            case "FAILED":
+                message = "JavaBank: " + txType + " of Rs." + amtStr
+                        + " FAILED. " + (extra != null ? "Reason: " + extra : "Please try again.");
+                break;
+            default:
+                message = "JavaBank: " + txType + " of Rs." + amtStr + " — " + statusType;
+        }
+
+        System.out.println("========================================");
+        System.out.println("[SMSService] TXN ALERT [" + statusType + "] for +91" + toPhone);
+        System.out.println("[SMSService] " + message);
+        System.out.println("[SMSService] SMS_ENABLED = " + SMS_ENABLED);
+        System.out.println("========================================");
+
+        if (!SMS_ENABLED) {
+            System.out.println("[SMSService] SMS is DISABLED. Alert logged above.");
+            return;
+        }
+
+        final String finalMsg = message;
+        new Thread(() -> sendViaQuickSMS(toPhone, finalMsg, null)).start();
+    }
+
+    // ---------------------------------------------------------------
     // Core sender — Fast2SMS route=q
     // SYLLABUS: Unit IV - Networking (HttpClient, URI, GET request)
     // ---------------------------------------------------------------

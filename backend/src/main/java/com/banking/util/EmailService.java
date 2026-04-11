@@ -69,6 +69,128 @@ public class EmailService {
     }
 
     // -------------------------------------------------------
+    // Transaction SUCCESS email (deposit, withdraw, transfer)
+    // -------------------------------------------------------
+    public static void sendTransactionSuccessEmail(
+            String toEmail, String userName,
+            String txType, double amount,
+            String txId, double balanceAfter,
+            String description, String toAccount) {
+
+        String amtStr  = String.format("%.2f", amount);
+        String balStr  = String.format("%.2f", balanceAfter);
+        String subject = "JavaBank: " + txType + " of Rs." + amtStr + " Successful";
+
+        String toRow = (toAccount != null && !toAccount.isEmpty())
+            ? "<p><strong>To Account:</strong> " + toAccount + "</p>" : "";
+
+        String descRow = (description != null && !description.isEmpty())
+            ? "<p><strong>Description:</strong> " + description + "</p>" : "";
+
+        String html = "<div style='font-family:Arial,sans-serif;max-width:520px;margin:auto;"
+                + "background:#0f172a;color:#f1f5f9;padding:32px;border-radius:16px;'>"
+                + "<h2 style='color:#22c55e;margin-bottom:4px;'>Transaction Successful</h2>"
+                + "<p style='color:#64748b;margin-top:0;'>JavaBank Notification</p>"
+                + "<p>Dear <strong>" + userName + "</strong>,</p>"
+                + "<p>Your transaction has been completed successfully.</p>"
+                + "<div style='background:#1e293b;border:1px solid #22c55e;border-radius:12px;padding:20px;margin:16px 0;'>"
+                + "<div style='text-align:center;margin-bottom:12px;'>"
+                + "<span style='font-size:2rem;font-weight:800;color:#22c55e;'>Rs." + amtStr + "</span><br>"
+                + "<span style='font-size:0.8rem;color:#64748b;text-transform:uppercase;'>" + txType + "</span>"
+                + "</div>"
+                + "<p><strong>Transaction ID:</strong> TXN-" + txId + "</p>"
+                + "<p><strong>Type:</strong> " + txType + "</p>"
+                + toRow + descRow
+                + "<p><strong>Balance After:</strong> Rs." + balStr + "</p>"
+                + "<p><strong>Date & Time:</strong> " + new java.util.Date() + "</p>"
+                + "</div>"
+                + "<p style='color:#475569;font-size:0.8rem;'>If you did not initiate this transaction, "
+                + "please contact JavaBank support immediately.</p>"
+                + "<p style='color:#475569;font-size:0.8rem;'>JavaBank Security Team</p>"
+                + "</div>";
+
+        new Thread(() -> sendEmail(toEmail, userName, subject, html)).start();
+    }
+
+    // -------------------------------------------------------
+    // Transaction HELD email (fraud hold — needs confirmation)
+    // -------------------------------------------------------
+    public static void sendTransactionHeldEmail(
+            String toEmail, String userName,
+            String txType, double amount,
+            int pendingId, String fraudReason) {
+
+        String amtStr  = String.format("%.2f", amount);
+        String subject = "ACTION REQUIRED: JavaBank Transaction Held — Rs." + amtStr;
+        String pendingUrl = "https://java-banking-webapp.vercel.app/pages/pending.html";
+        String reasonStr = (fraudReason != null && !fraudReason.isEmpty())
+            ? fraudReason : "Unusual activity detected";
+
+        String html = "<div style='font-family:Arial,sans-serif;max-width:520px;margin:auto;"
+                + "background:#0f172a;color:#f1f5f9;padding:32px;border-radius:16px;'>"
+                + "<h2 style='color:#f59e0b;margin-bottom:4px;'>Transaction Paused</h2>"
+                + "<p style='color:#64748b;margin-top:0;'>Action Required — JavaBank Security</p>"
+                + "<p>Dear <strong>" + userName + "</strong>,</p>"
+                + "<p>A transaction on your account has been <strong style='color:#f59e0b;'>temporarily held</strong> "
+                + "by our fraud protection system. Your money has <strong>NOT been deducted</strong> yet.</p>"
+                + "<div style='background:#1e293b;border:2px solid #f59e0b;border-radius:12px;padding:20px;margin:16px 0;'>"
+                + "<div style='text-align:center;margin-bottom:12px;'>"
+                + "<span style='font-size:2rem;font-weight:800;color:#f59e0b;'>Rs." + amtStr + "</span><br>"
+                + "<span style='font-size:0.8rem;color:#64748b;text-transform:uppercase;'>" + txType + " ON HOLD</span>"
+                + "</div>"
+                + "<p><strong>Reason:</strong> " + reasonStr + "</p>"
+                + "<p><strong>Reference:</strong> Pending #" + pendingId + "</p>"
+                + "<p><strong>Held At:</strong> " + new java.util.Date() + "</p>"
+                + "</div>"
+                + "<div style='background:#dc2626;border-radius:10px;padding:14px;text-align:center;margin:16px 0;'>"
+                + "<strong style='color:white;'>AUTO-CANCELS IN 5 MINUTES if no action!</strong>"
+                + "</div>"
+                + "<p><strong>To confirm or reject this transaction, tap the button below:</strong></p>"
+                + "<div style='text-align:center;margin:20px 0;'>"
+                + "<a href='" + pendingUrl + "' style='display:inline-block;background:#f59e0b;"
+                + "color:#0f172a;font-weight:700;padding:14px 32px;border-radius:10px;"
+                + "text-decoration:none;font-size:1rem;'>Review Pending Transaction</a>"
+                + "</div>"
+                + "<p style='color:#475569;font-size:0.8rem;'>If you did not make this transaction, "
+                + "click the button above and select Reject to keep your money safe.</p>"
+                + "<p style='color:#475569;font-size:0.8rem;'>JavaBank Security Team</p>"
+                + "</div>";
+
+        new Thread(() -> sendEmail(toEmail, userName, subject, html)).start();
+    }
+
+    // -------------------------------------------------------
+    // Transaction FAILED email
+    // -------------------------------------------------------
+    public static void sendTransactionFailedEmail(
+            String toEmail, String userName,
+            String txType, double amount, String reason) {
+
+        String amtStr  = String.format("%.2f", amount);
+        String subject = "JavaBank: " + txType + " of Rs." + amtStr + " Failed";
+
+        String html = "<div style='font-family:Arial,sans-serif;max-width:520px;margin:auto;"
+                + "background:#0f172a;color:#f1f5f9;padding:32px;border-radius:16px;'>"
+                + "<h2 style='color:#ef4444;margin-bottom:4px;'>Transaction Failed</h2>"
+                + "<p style='color:#64748b;margin-top:0;'>JavaBank Notification</p>"
+                + "<p>Dear <strong>" + userName + "</strong>,</p>"
+                + "<p>Your recent transaction could not be completed.</p>"
+                + "<div style='background:#1e293b;border:1px solid #ef4444;border-radius:12px;padding:20px;margin:16px 0;'>"
+                + "<div style='text-align:center;margin-bottom:12px;'>"
+                + "<span style='font-size:2rem;font-weight:800;color:#ef4444;'>Rs." + amtStr + "</span><br>"
+                + "<span style='font-size:0.8rem;color:#64748b;text-transform:uppercase;'>" + txType + " FAILED</span>"
+                + "</div>"
+                + "<p><strong>Reason:</strong> " + (reason != null ? reason : "Transaction could not be processed") + "</p>"
+                + "<p><strong>Date & Time:</strong> " + new java.util.Date() + "</p>"
+                + "</div>"
+                + "<p>No money has been deducted from your account.</p>"
+                + "<p style='color:#475569;font-size:0.8rem;'>JavaBank Security Team</p>"
+                + "</div>";
+
+        new Thread(() -> sendEmail(toEmail, userName, subject, html)).start();
+    }
+
+    // -------------------------------------------------------
     // Core method: calls Brevo HTTP API
     // SYLLABUS: Unit IV - Networking (HttpURLConnection)
     // -------------------------------------------------------

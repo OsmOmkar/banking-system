@@ -109,6 +109,7 @@
 
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/txn-popup.js"></script>
 <script>
 Auth.requireAuth();
 renderSidebar("transfer");
@@ -173,13 +174,13 @@ async function loadHistory() {
 }
 
 async function doTransfer() {
-    const fromAccountId = parseInt(document.getElementById("fromAccount").value);
-    const toAccountNumber = document.getElementById("toAccount").value.trim();
-    const amount = parseFloat(document.getElementById("transferAmt").value);
-    const description = document.getElementById("transferDesc").value || "Transfer";
+    const fromAccountId    = parseInt(document.getElementById("fromAccount").value);
+    const toAccountNumber  = document.getElementById("toAccount").value.trim();
+    const amount           = parseFloat(document.getElementById("transferAmt").value);
+    const description      = document.getElementById("transferDesc").value || "Transfer";
 
-    if (!fromAccountId) { showAlert("Select a source account", "warning"); return; }
-    if (!toAccountNumber) { showAlert("Enter recipient account number", "warning"); return; }
+    if (!fromAccountId)    { showAlert("Select a source account", "warning"); return; }
+    if (!toAccountNumber)  { showAlert("Enter recipient account number", "warning"); return; }
     if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
 
     const btn = document.getElementById("transferBtn");
@@ -189,18 +190,60 @@ async function doTransfer() {
         const tx = await API.call("/transfer", "POST",
             { fromAccountId, toAccountNumber, amount, description });
 
-        const msg = tx.flagged
-            ? `✅ Transfer of ${fmt(amount)} completed — ⚠️ flagged for fraud review`
-            : `✅ Transfer of ${fmt(amount)} to ${toAccountNumber} completed!`;
-        showAlert(msg, tx.flagged ? "warning" : "success");
-
-        document.getElementById("toAccount").value = "";
-        document.getElementById("transferAmt").value = "";
+        // Clear form
+        document.getElementById("toAccount").value    = "";
+        document.getElementById("transferAmt").value  = "";
         document.getElementById("transferDesc").value = "";
         await init();
         await loadHistory();
+
+        // Success popup
+        showTxnPopup({
+            type: 'success',
+            title: 'Transfer Completed!',
+            amountLabel: 'Amount Transferred',
+            amount: fmt(amount),
+            details: buildTxnDetails(tx, [
+                { label: 'To Account', value: toAccountNumber },
+                { label: 'Type',       value: 'Transfer' },
+                { label: 'Remarks',    value: description }
+            ])
+        });
+
     } catch(e) {
-        showAlert(e.message, "error");
+        await init();
+        await loadHistory();
+
+        if (e.held) {
+            // Fraud hold — transaction paused
+            showTxnPopup({
+                type: 'held',
+                title: 'Transfer Paused — Fraud Review',
+                amountLabel: 'Amount On Hold',
+                amount: fmt(amount),
+                details: [
+                    { label: 'To Account', value: toAccountNumber },
+                    { label: 'Type',       value: 'Transfer' },
+                    { label: 'Remarks',    value: description },
+                    { label: 'Reference',  value: 'Pending #' + (e.pendingId || '—') },
+                    { label: 'Expires In', value: '5 minutes' }
+                ],
+                note: '⚠️ Our AI fraud engine flagged this transfer. Money has NOT been sent yet. Go to Pending Confirmations and Approve (if you made it) or Reject (if fraud).',
+                showPendingBtn: true
+            });
+        } else {
+            // Hard failure
+            showTxnPopup({
+                type: 'failed',
+                title: 'Transfer Failed',
+                amountLabel: 'Amount',
+                amount: fmt(amount),
+                details: [
+                    { label: 'To Account', value: toAccountNumber },
+                    { label: 'Reason',     value: e.message }
+                ]
+            });
+        }
     } finally {
         btn.disabled = false; btn.innerHTML = "🔄 Transfer Now";
     }

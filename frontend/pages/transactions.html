@@ -83,7 +83,7 @@
           <table>
             <thead>
               <tr>
-                <th>Date & Time</th>
+                <th>Date &amp; Time</th>
                 <th>Type</th>
                 <th>Description</th>
                 <th>Amount</th>
@@ -105,6 +105,7 @@
 
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/txn-popup.js"></script>
 <script>
 Auth.requireAuth();
 renderSidebar("transactions");
@@ -119,7 +120,6 @@ async function init() {
           ${a.accountType} — ${a.accountNumber} (${fmt(a.balance)})
         </option>`).join("");
 
-    // Check for accountId in URL
     const params = new URLSearchParams(window.location.search);
     if (params.get("accountId")) sel.value = params.get("accountId");
 
@@ -187,48 +187,104 @@ function setTab(tab) {
 }
 
 async function doDeposit() {
-    const accountId = document.getElementById("accountSelect").value;
-    const amount = parseFloat(document.getElementById("depositAmt").value);
-    const description = document.getElementById("depositDesc").value || "Deposit";
-    if (!accountId) { showAlert("Select an account first", "warning"); return; }
-    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+    const accountId   = document.getElementById("accountSelect").value;
+    const amount      = parseFloat(document.getElementById("depositAmt").value);
+    const description = document.getElementById("depositDesc").value || "Cash Deposit";
+    if (!accountId)            { showAlert("Select an account first", "warning"); return; }
+    if (!amount || amount <= 0){ showAlert("Enter a valid amount", "error"); return; }
 
     const btn = document.getElementById("depositBtn");
     btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Processing...';
 
     try {
-        const tx = await API.call("/deposit", "POST", { accountId: parseInt(accountId), amount, description });
-        showAlert(`✅ Deposited ${fmt(amount)} successfully! New balance: ${fmt(tx.balanceAfter)}`, "success");
-        document.getElementById("depositAmt").value = "";
-        document.getElementById("depositDesc").value = "";
-        await init(); // refresh balance
+        const tx = await API.call("/deposit", "POST",
+            { accountId: parseInt(accountId), amount, description });
+
+        document.getElementById("depositAmt").value   = "";
+        document.getElementById("depositDesc").value  = "";
+        await init();
         await loadTransactions();
+
+        showTxnPopup({
+            type: 'success',
+            title: 'Deposit Successful!',
+            amountLabel: 'Amount Credited',
+            amount: fmt(amount),
+            details: buildTxnDetails(tx, [
+                { label: 'Type', value: 'Deposit' },
+                { label: 'Description', value: description }
+            ])
+        });
     } catch(e) {
-        showAlert(e.message, "error");
+        showTxnPopup({
+            type: 'failed',
+            title: 'Deposit Failed',
+            amountLabel: 'Amount',
+            amount: fmt(amount),
+            details: [{ label: 'Reason', value: e.message }]
+        });
     } finally {
         btn.disabled = false; btn.innerHTML = "💰 Deposit";
     }
 }
 
 async function doWithdraw() {
-    const accountId = document.getElementById("accountSelect").value;
-    const amount = parseFloat(document.getElementById("withdrawAmt").value);
+    const accountId   = document.getElementById("accountSelect").value;
+    const amount      = parseFloat(document.getElementById("withdrawAmt").value);
     const description = document.getElementById("withdrawDesc").value || "Withdrawal";
-    if (!accountId) { showAlert("Select an account first", "warning"); return; }
-    if (!amount || amount <= 0) { showAlert("Enter a valid amount", "error"); return; }
+    if (!accountId)            { showAlert("Select an account first", "warning"); return; }
+    if (!amount || amount <= 0){ showAlert("Enter a valid amount", "error"); return; }
 
     const btn = document.getElementById("withdrawBtn");
     btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Processing...';
 
     try {
-        const tx = await API.call("/withdraw", "POST", { accountId: parseInt(accountId), amount, description });
-        showAlert(`✅ Withdrew ${fmt(amount)}. New balance: ${fmt(tx.balanceAfter)}`, "success");
-        document.getElementById("withdrawAmt").value = "";
+        const tx = await API.call("/withdraw", "POST",
+            { accountId: parseInt(accountId), amount, description });
+
+        document.getElementById("withdrawAmt").value  = "";
         document.getElementById("withdrawDesc").value = "";
         await init();
         await loadTransactions();
+
+        showTxnPopup({
+            type: 'success',
+            title: 'Withdrawal Successful!',
+            amountLabel: 'Amount Debited',
+            amount: fmt(amount),
+            details: buildTxnDetails(tx, [
+                { label: 'Type', value: 'Withdrawal' },
+                { label: 'Description', value: description }
+            ])
+        });
     } catch(e) {
-        showAlert(e.message, "error");
+        if (e.held) {
+            // Fraud hold on withdrawal
+            showTxnPopup({
+                type: 'held',
+                title: 'Transaction Paused — Review Required',
+                amountLabel: 'Amount On Hold',
+                amount: fmt(amount),
+                details: [
+                    { label: 'Type', value: 'Withdrawal' },
+                    { label: 'Description', value: description },
+                    { label: 'Reason', value: e.message },
+                    { label: 'Reference', value: 'Pending #' + (e.pendingId || '—') }
+                ],
+                note: '⚠️ Our fraud engine flagged this withdrawal. Please go to Pending Confirmations to approve or reject it within 5 minutes.',
+                showPendingBtn: true
+            });
+        } else {
+            showTxnPopup({
+                type: 'failed',
+                title: 'Withdrawal Failed',
+                amountLabel: 'Amount',
+                amount: fmt(amount),
+                details: [{ label: 'Reason', value: e.message }]
+            });
+        }
+        await init();
+        await loadTransactions();
     } finally {
         btn.disabled = false; btn.innerHTML = "📤 Withdraw";
     }

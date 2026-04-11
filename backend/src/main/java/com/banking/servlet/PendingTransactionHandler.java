@@ -5,7 +5,9 @@ import com.banking.model.PendingTransaction.Status;
 import com.banking.model.User;
 import com.banking.service.BankingService;
 import com.banking.service.PendingTransactionDAO;
+import com.banking.util.EmailService;
 import com.banking.util.JsonUtil;
+import com.banking.util.SMSService;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.util.ArrayList;
@@ -112,6 +114,28 @@ public class PendingTransactionHandler extends BaseHandler {
             System.out.println("[PendingHandler] ✅ Transaction ID " + pendingId
                     + " CONFIRMED by user " + user.getUsername());
 
+            // Send CONFIRMED notification (email + SMS)
+            try {
+                String name  = user.getFullName() != null ? user.getFullName() : user.getUsername();
+                String txType = pt.getTransactionType() != null ? pt.getTransactionType() : "Transaction";
+                if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                    EmailService.sendTransactionSuccessEmail(
+                        user.getEmail(), name,
+                        txType + " (Confirmed)",
+                        pt.getAmount(),
+                        String.valueOf(pendingId),
+                        0, pt.getDescription(),
+                        pt.getToAccountNumber());
+                }
+                if (user.getPhone() != null && !user.getPhone().isEmpty()) {
+                    SMSService.sendTransactionSms(
+                        user.getPhone(), name,
+                        txType, pt.getAmount(), "CONFIRMED", null);
+                }
+            } catch (Exception notifEx) {
+                System.err.println("[PendingHandler] Confirm notification error: " + notifEx.getMessage());
+            }
+
             sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
                     JsonUtil.field("message", "Transaction confirmed and completed successfully"),
                     JsonUtil.field("pendingId", pendingId),
@@ -156,12 +180,32 @@ public class PendingTransactionHandler extends BaseHandler {
             return;
         }
 
-        // Mark as rejected → funds NOT deducted (they were never actually sent)
+        // Mark as rejected → funds NOT deducted
         pendingDAO.updateStatus(pendingId, Status.REJECTED);
 
         System.out.println("[PendingHandler] 🚨 FRAUD REPORTED! Pending transaction ID "
                 + pendingId + " REJECTED by user " + user.getUsername()
                 + " — Amount ₹" + pt.getAmount() + " is SAFE.");
+
+        // Send FRAUD REJECTED notification (email + SMS)
+        try {
+            String name   = user.getFullName() != null ? user.getFullName() : user.getUsername();
+            String txType = pt.getTransactionType() != null ? pt.getTransactionType() : "Transaction";
+            if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                EmailService.sendTransactionFailedEmail(
+                    user.getEmail(), name,
+                    txType + " (Fraud Rejected)",
+                    pt.getAmount(),
+                    "You reported this as fraud. Transaction cancelled, money is safe.");
+            }
+            if (user.getPhone() != null && !user.getPhone().isEmpty()) {
+                SMSService.sendTransactionSms(
+                    user.getPhone(), name,
+                    txType, pt.getAmount(), "FRAUD_REJECTED", null);
+            }
+        } catch (Exception notifEx) {
+            System.err.println("[PendingHandler] Reject notification error: " + notifEx.getMessage());
+        }
 
         sendResponse(exchange, 200, JsonUtil.success(JsonUtil.object(
                 JsonUtil.field("message", "Transaction rejected. Your money is safe. Fraud report logged."),

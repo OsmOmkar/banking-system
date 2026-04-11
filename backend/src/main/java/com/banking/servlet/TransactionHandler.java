@@ -4,7 +4,9 @@ import com.banking.exception.*;
 import com.banking.model.Transaction;
 import com.banking.model.User;
 import com.banking.service.BankingService;
+import com.banking.util.EmailService;
 import com.banking.util.JsonUtil;
+import com.banking.util.SMSService;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.util.ArrayList;
@@ -44,6 +46,8 @@ public class TransactionHandler extends BaseHandler {
 
         // SYLLABUS: Unit III - catch custom exceptions separately
         } catch (InsufficientFundsException e) {
+            // Send failure notification
+            sendFailureNotification(user, "Transaction", 0, "Insufficient funds: " + e.getMessage());
             sendResponse(exchange, 400, JsonUtil.error("Insufficient funds: " + e.getMessage()));
 
         } catch (InvalidAmountException e) {
@@ -56,16 +60,32 @@ public class TransactionHandler extends BaseHandler {
             // ----------------------------------------------------------------
             // PROACTIVE FRAUD HOLD — special response format
             // Message format: "TRANSACTION_HELD:<pendingId>:<human message>"
-            // The frontend reads this and shows a "Pending Confirmation" UI
             // ----------------------------------------------------------------
             String msg = e.getMessage();
             if (msg != null && msg.startsWith("TRANSACTION_HELD:")) {
-                String[] parts = msg.split(":", 3);
-                String pendingId    = parts.length > 1 ? parts[1] : "0";
-                String humanMessage = parts.length > 2 ? parts[2]
+                String[] parts       = msg.split(":", 3);
+                String pendingId     = parts.length > 1 ? parts[1] : "0";
+                String humanMessage  = parts.length > 2 ? parts[2]
                         : "Transaction held for fraud verification.";
 
-                // Return 202 Accepted (not 403) — transaction is HELD, not blocked
+                // Send HELD notification (email + SMS) asynchronously
+                try {
+                    int pid = Integer.parseInt(pendingId);
+                    if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                        EmailService.sendTransactionHeldEmail(
+                            user.getEmail(), user.getFullName(),
+                            "Transaction", 0, pid, humanMessage);
+                    }
+                    if (user.getPhone() != null && !user.getPhone().isEmpty()) {
+                        SMSService.sendTransactionSms(
+                            user.getPhone(), user.getFullName(),
+                            "Transaction", 0, "HELD", null);
+                    }
+                } catch (Exception ignored) {
+                    System.err.println("[TransactionHandler] Notification error: " + ignored.getMessage());
+                }
+
+                // Return 202 Accepted — transaction is HELD, not blocked
                 String json = "{\"success\":false,\"held\":true,\"pendingId\":" + pendingId
                         + ",\"error\":\"" + humanMessage.replace("\"", "'") + "\"}";
                 sendResponse(exchange, 202, json);
@@ -78,32 +98,44 @@ public class TransactionHandler extends BaseHandler {
 
     private void handleDeposit(HttpExchange exchange, User user, String body) throws Exception {
         Map<String, String> data = parseJson(body);
-        int accountId = Integer.parseInt(data.get("accountId"));
-        double amount = Double.parseDouble(data.get("amount"));
-        String desc   = data.getOrDefault("description", "Deposit");
+        int    accountId = Integer.parseInt(data.get("accountId"));
+        double amount    = Double.parseDouble(data.get("amount"));
+        String desc      = data.getOrDefault("description", "Deposit");
 
         Transaction tx = bankingService.deposit(accountId, amount, desc, getIp(exchange));
+
+        // Send success notification async
+        sendSuccessNotification(user, "DEPOSIT", amount, tx, desc, null);
+
         sendResponse(exchange, 200, txToJson(tx));
     }
 
     private void handleWithdraw(HttpExchange exchange, User user, String body) throws Exception {
         Map<String, String> data = parseJson(body);
-        int accountId = Integer.parseInt(data.get("accountId"));
-        double amount = Double.parseDouble(data.get("amount"));
-        String desc   = data.getOrDefault("description", "Withdrawal");
+        int    accountId = Integer.parseInt(data.get("accountId"));
+        double amount    = Double.parseDouble(data.get("amount"));
+        String desc      = data.getOrDefault("description", "Withdrawal");
 
         Transaction tx = bankingService.withdraw(accountId, amount, desc, getIp(exchange));
+
+        // Send success notification async
+        sendSuccessNotification(user, "WITHDRAWAL", amount, tx, desc, null);
+
         sendResponse(exchange, 200, txToJson(tx));
     }
 
     private void handleTransfer(HttpExchange exchange, User user, String body) throws Exception {
         Map<String, String> data = parseJson(body);
-        int fromId    = Integer.parseInt(data.get("fromAccountId"));
-        String toAcc  = data.get("toAccountNumber");
-        double amount = Double.parseDouble(data.get("amount"));
-        String desc   = data.getOrDefault("description", "Transfer");
+        int    fromId  = Integer.parseInt(data.get("fromAccountId"));
+        String toAcc   = data.get("toAccountNumber");
+        double amount  = Double.parseDouble(data.get("amount"));
+        String desc    = data.getOrDefault("description", "Transfer");
 
         Transaction tx = bankingService.transfer(fromId, toAcc, amount, desc, getIp(exchange));
+
+        // Send success notification async
+        sendSuccessNotification(user, "TRANSFER", amount, tx, desc, toAcc);
+
         sendResponse(exchange, 200, txToJson(tx));
     }
 
@@ -121,29 +153,69 @@ public class TransactionHandler extends BaseHandler {
         List<String> items = new ArrayList<>();
         for (Transaction tx : txList) {
             items.add(JsonUtil.object(
-                    JsonUtil.field("id", tx.getId()),
-                    JsonUtil.field("type", tx.getTransactionType().name()),
-                    JsonUtil.field("amount", tx.getAmount()),
+                    JsonUtil.field("id",          tx.getId()),
+                    JsonUtil.field("type",         tx.getTransactionType().name()),
+                    JsonUtil.field("amount",       tx.getAmount()),
                     JsonUtil.field("balanceAfter", tx.getBalanceAfter()),
-                    JsonUtil.field("description", tx.getDescription() != null ? tx.getDescription() : ""),
-                    JsonUtil.field("recipient", tx.getRecipientAccount() != null ? tx.getRecipientAccount() : ""),
-                    JsonUtil.field("flagged", tx.isFlagged()),
-                    JsonUtil.field("date", tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "")
+                    JsonUtil.field("description",  tx.getDescription() != null ? tx.getDescription() : ""),
+                    JsonUtil.field("recipient",    tx.getRecipientAccount() != null ? tx.getRecipientAccount() : ""),
+                    JsonUtil.field("flagged",      tx.isFlagged()),
+                    JsonUtil.field("date",         tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "")
             ));
         }
 
         sendResponse(exchange, 200, JsonUtil.success(JsonUtil.array(items)));
     }
 
+    // ── Notification helpers ───────────────────────────────────────
+    private void sendSuccessNotification(User user, String txType, double amount,
+                                         Transaction tx, String desc, String toAccount) {
+        try {
+            String email = user.getEmail();
+            String phone = user.getPhone();
+            String name  = user.getFullName() != null ? user.getFullName() : user.getUsername();
+            String txId  = String.valueOf(tx.getId());
+            double bal   = tx.getBalanceAfter();
+
+            if (email != null && !email.isEmpty()) {
+                EmailService.sendTransactionSuccessEmail(
+                    email, name, txType, amount, txId, bal, desc, toAccount);
+            }
+            if (phone != null && !phone.isEmpty()) {
+                String extra = "Bal: Rs." + String.format("%.2f", bal);
+                SMSService.sendTransactionSms(phone, name, txType, amount, "SUCCESS", extra);
+            }
+        } catch (Exception e) {
+            System.err.println("[TransactionHandler] Notification send error: " + e.getMessage());
+        }
+    }
+
+    private void sendFailureNotification(User user, String txType, double amount, String reason) {
+        try {
+            String email = user.getEmail();
+            String phone = user.getPhone();
+            String name  = user.getFullName() != null ? user.getFullName() : user.getUsername();
+
+            if (email != null && !email.isEmpty()) {
+                EmailService.sendTransactionFailedEmail(email, name, txType, amount, reason);
+            }
+            if (phone != null && !phone.isEmpty()) {
+                SMSService.sendTransactionSms(phone, name, txType, amount, "FAILED", reason);
+            }
+        } catch (Exception e) {
+            System.err.println("[TransactionHandler] Failure notification error: " + e.getMessage());
+        }
+    }
+
     private String txToJson(Transaction tx) {
         return JsonUtil.success(JsonUtil.object(
-                JsonUtil.field("id", tx.getId()),
-                JsonUtil.field("type", tx.getTransactionType().name()),
-                JsonUtil.field("amount", tx.getAmount()),
-                JsonUtil.field("balanceAfter", tx.getBalanceAfter()),
+                JsonUtil.field("id",          tx.getId()),
+                JsonUtil.field("type",        tx.getTransactionType().name()),
+                JsonUtil.field("amount",      tx.getAmount()),
+                JsonUtil.field("balanceAfter",tx.getBalanceAfter()),
                 JsonUtil.field("description", tx.getDescription() != null ? tx.getDescription() : ""),
-                JsonUtil.field("flagged", tx.isFlagged()),
-                JsonUtil.field("date", tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "")
+                JsonUtil.field("flagged",     tx.isFlagged()),
+                JsonUtil.field("date",        tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "")
         ));
     }
 }
