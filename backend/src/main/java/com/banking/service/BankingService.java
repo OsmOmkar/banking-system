@@ -219,7 +219,7 @@ public class BankingService implements TransactionProcessor,
             pt.setTransactionType("TRANSFER");
             pt.setAmount(amount);
             pt.setToAccountNumber(toAccountNumber);
-            pt.setDescription(description);
+            pt.setDescription(splitDescription(description)[0]); // store only sender side
             pt.setIpAddress(ip);
             pt.setOriginalBalance(from.getBalance());
             pt.setRecipientOriginalBalance(to.getBalance());
@@ -286,11 +286,24 @@ public class BankingService implements TransactionProcessor,
         accountDAO.updateBalance(fromAccountId, from.getBalance());
         accountDAO.updateBalance(to.getId(), to.getBalance());
 
+        // Split sender / receiver description (>>RECEIVER: convention used by UPI)
+        String[] descParts  = splitDescription(description);
+        String   senderDesc = descParts[0] != null ? descParts[0] : "Transfer";
+        String   creditDesc = descParts[1] != null ? descParts[1]
+                : buildCreditDescription(senderDesc, from.getAccountNumber());
+
         Transaction tx = new Transaction(fromAccountId, TransactionType.TRANSFER,
-                amount, from.getBalance(), description);
+                amount, from.getBalance(), senderDesc);
         tx.setRecipientAccount(toAccountNumber);
         tx.setIpAddress(ip);
         tx = txDAO.save(tx);
+
+        // Save CREDIT (DEPOSIT) transaction for receiver — fixes cross-user transfer credit bug
+        Transaction creditTx = new Transaction(to.getId(), TransactionType.DEPOSIT,
+                amount, to.getBalance(), creditDesc);
+        creditTx.setRecipientAccount(from.getAccountNumber()); // sender's account number
+        creditTx.setIpAddress(ip);
+        txDAO.save(creditTx);
 
         fraudThread.submitForAnalysis(tx, history);
 
@@ -337,16 +350,25 @@ public class BankingService implements TransactionProcessor,
             accountDAO.updateBalance(from.getId(), from.getBalance());
             accountDAO.updateBalance(to.getId(), to.getBalance());
 
+            String senderConfirmDesc = (pt.getDescription() != null ? pt.getDescription() : "Transfer") + " [Confirmed]";
+            String creditConfirmDesc = buildCreditDescription(pt.getDescription(), from.getAccountNumber()) + " [Confirmed]";
+
             Transaction tx = new Transaction(from.getId(), TransactionType.TRANSFER,
-                    pt.getAmount(), from.getBalance(),
-                    (pt.getDescription() != null ? pt.getDescription() : "Transfer") + " [Confirmed]");
+                    pt.getAmount(), from.getBalance(), senderConfirmDesc);
             tx.setRecipientAccount(pt.getToAccountNumber());
             tx.setIpAddress(pt.getIpAddress());
             txDAO.save(tx);
 
+            // Save CREDIT transaction for receiver when held transfer is confirmed
+            Transaction creditTx = new Transaction(to.getId(), TransactionType.DEPOSIT,
+                    pt.getAmount(), to.getBalance(), creditConfirmDesc);
+            creditTx.setRecipientAccount(from.getAccountNumber());
+            creditTx.setIpAddress(pt.getIpAddress());
+            txDAO.save(creditTx);
+
             System.out.println("[BankingService] ✅ Held TRANSFER completed: ₹" + pt.getAmount()
                     + " → " + pt.getToAccountNumber());
-            return from.getBalance(); // balance after transfer (sender's balance)
+            return from.getBalance();
         }
         return 0.0;
     }
@@ -431,5 +453,38 @@ public class BankingService implements TransactionProcessor,
     public void shutdown() {
         fraudThread.shutdown();
         timeoutMonitor.shutdown();
+    }
+
+    // ── Description helpers for transfer (sender / receiver split) ──────────────
+
+    /**
+     * Splits a description that may use the ">>RECEIVER:" separator convention
+     * (used by UPI to embed both sender and receiver descriptions in one field).
+     * Returns [senderDesc, receiverDesc]; receiverDesc may be null.
+     */
+    private String[] splitDescription(String description) {
+        if (description != null && description.contains(">>RECEIVER:")) {
+            String[] parts = description.split(">>RECEIVER:", 2);
+            return new String[]{ parts[0].trim(), parts[1].trim() };
+        }
+        return new String[]{ description, null };
+    }
+
+    /**
+     * Builds the credit (receiver) transaction description for plain bank transfers.
+     * Keeps the [UPI] tag when present so the transaction appears in UPI history.
+     */
+    private String buildCreditDescription(String originalDesc, String fromAccountNumber) {
+        if (originalDesc != null && originalDesc.startsWith("[UPI]")) {
+            String note = "";
+            int pipeIdx = originalDesc.indexOf('|');
+            if (pipeIdx >= 0) note = originalDesc.substring(pipeIdx + 1).trim();
+            String masked = fromAccountNumber != null && fromAccountNumber.length() > 4
+                    ? "xxxx" + fromAccountNumber.substring(fromAccountNumber.length() - 4)
+                    : fromAccountNumber;
+            return "[UPI] From: acct/" + masked + (note.isEmpty() ? "" : " | " + note);
+        }
+        return "Credit: Transfer from " + fromAccountNumber
+                + (originalDesc != null && !originalDesc.isBlank() ? " | " + originalDesc : "");
     }
 }

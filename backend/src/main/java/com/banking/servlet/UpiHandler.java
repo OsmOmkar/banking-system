@@ -213,10 +213,14 @@ public class UpiHandler extends BaseHandler {
         String recipientName = recipientProfile.getUserName() != null
             ? recipientProfile.getUserName() : "JavaBank User";
 
-        // Description formatted with [UPI] prefix (for filtering in transaction history)
-        String fullDesc = "[UPI] To: " + recipientName + " (" + toUpiId + ") | " + description;
-        String receiverDesc = "[UPI] From: " + (user.getFullName() != null ? user.getFullName() : user.getUsername())
-            + " (" + senderProfile.getUpiId() + ") | " + description;
+        // Description formatted with [UPI] prefix (for filtering in transaction history).
+        // ">>RECEIVER:" separator tells BankingService to use a different description
+        // for the receiver's credit transaction (includes sender's UPI ID).
+        String senderName = (user.getFullName() != null && !user.getFullName().isBlank())
+                ? user.getFullName() : user.getUsername();
+        String senderDesc   = "[UPI] To: "   + recipientName + " (" + toUpiId                + ") | " + description;
+        String receiverDesc = "[UPI] From: " + senderName     + " (" + senderProfile.getUpiId() + ") | " + description;
+        String fullDesc = senderDesc + ">>RECEIVER:" + receiverDesc;
 
         // Execute the transfer (this goes through fraud detection too)
         try {
@@ -226,14 +230,6 @@ public class UpiHandler extends BaseHandler {
                 amount, fullDesc,
                 getIp(exchange)
             );
-
-            // Also record a CREDIT entry on the recipient's side
-            // (this is normally done in BankingService.transfer for the receiving account)
-            // The debit description is already "[UPI]", credit side needs tagging too
-            // We update the most recent deposit-style credit for this transfer,
-            // OR we can tag the recipient's transaction separately
-            // For simplicity, the transfer already credits recipient; we just tag it via receiverDesc
-            // in the existing tx.description for recipient account's latest credit
 
             // Send success notification
             try {

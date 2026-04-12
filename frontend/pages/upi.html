@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -157,6 +158,74 @@
     #loadSplash{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
     .splash-spin{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--upi-purple);border-radius:50%;animation:spin 1s linear infinite}
     .splash-txt{color:var(--muted);font-size:.9rem}
+    /* ─── Receipt Modal ─────────────────────────────── */
+    .receipt-overlay { position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+      display:none;align-items:flex-end;justify-content:center; }
+    .receipt-overlay.open { display:flex; }
+    .receipt-modal { background:var(--surface);border-radius:24px 24px 0 0;
+      width:100%;max-width:480px;max-height:92vh;overflow-y:auto;
+      animation:slideUp .35s cubic-bezier(0.34,1.2,0.64,1); }
+    .receipt-modal::-webkit-scrollbar { width:0; }
+    /* Header gradient strip */
+    .rcpt-header { padding:28px 24px 20px;
+      background:linear-gradient(160deg,rgba(22,163,74,.15),transparent); }
+    .rcpt-status-row { display:flex;align-items:center;gap:10px;margin-bottom:6px; }
+    .rcpt-status-icon { font-size:1.5rem; }
+    .rcpt-status-text { font-size:1rem;font-weight:700;color:#22c55e; }
+    .rcpt-status-text.received { color:#22c55e; }
+    .rcpt-status-text.paid { color:#f1f5f9; }
+    .rcpt-datetime { font-size:.78rem;color:var(--muted); }
+    /* Main party row */
+    .rcpt-party-row { display:flex;align-items:center;gap:12px;
+      padding:16px 24px;border-bottom:1px solid var(--border); }
+    .rcpt-avatar { width:48px;height:48px;border-radius:50%;
+      background:var(--grad);display:flex;align-items:center;justify-content:center;
+      font-size:1.3rem;font-weight:700;color:#fff;flex-shrink:0; }
+    .rcpt-party-info { flex:1;min-width:0; }
+    .rcpt-direction { font-size:.75rem;font-weight:600;text-transform:uppercase;
+      letter-spacing:.06em;color:var(--muted);margin-bottom:2px; }
+    .rcpt-party-name { font-size:1rem;font-weight:700;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .rcpt-party-upi { font-size:.78rem;color:var(--muted);margin-top:2px; }
+    .rcpt-amount { font-size:1.5rem;font-weight:800;flex-shrink:0;
+      white-space:nowrap; }
+    .rcpt-amount.received { color:#22c55e; }
+    .rcpt-amount.paid { color:var(--text); }
+    /* Transfer details section */
+    .rcpt-section { padding:16px 24px; }
+    .rcpt-section-title { font-size:.72rem;font-weight:700;text-transform:uppercase;
+      letter-spacing:.1em;color:var(--muted);margin-bottom:12px; }
+    .rcpt-detail-row { display:flex;justify-content:space-between;align-items:flex-start;
+      margin-bottom:12px;gap:12px; }
+    .rcpt-detail-label { font-size:.78rem;color:var(--muted);flex-shrink:0;
+      white-space:nowrap; }
+    .rcpt-detail-value { font-size:.88rem;font-weight:500;text-align:right;
+      word-break:break-all; }
+    .rcpt-utr { font-size:.95rem;font-weight:700;color:var(--upi-purple);
+      letter-spacing:.04em; }
+    .rcpt-acc-row { display:flex;justify-content:space-between;align-items:center;
+      background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:14px; }
+    .rcpt-acc-info .rcpt-acc-label { font-size:.72rem;color:var(--muted); }
+    .rcpt-acc-info .rcpt-acc-num { font-size:.9rem;font-weight:600;margin-top:2px; }
+    .rcpt-acc-amount { font-size:1rem;font-weight:700; }
+    /* Action buttons */
+    .rcpt-actions { display:flex;gap:10px;padding:16px 24px 28px; }
+    .rcpt-btn { flex:1;padding:12px 8px;border:none;border-radius:12px;
+      font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s; }
+    .rcpt-btn.history { background:var(--surface2);color:var(--text); }
+    .rcpt-btn.history:hover { background:rgba(124,58,237,.15);color:#a78bfa; }
+    .rcpt-btn.download { background:var(--grad);color:#fff; }
+    .rcpt-btn.download:hover { opacity:.9; }
+    .rcpt-close-row { display:flex;justify-content:center;padding:12px 0 0; }
+    .rcpt-close-btn { background:none;border:none;color:var(--muted);font-size:.85rem;
+      cursor:pointer;padding:6px 18px;border-radius:20px;
+      transition:.2s;font-family:inherit; }
+    .rcpt-close-btn:hover { background:var(--surface2);color:var(--text); }
+    /* tx-item hover */
+    .tx-item { cursor:pointer;transition:.15s; }
+    .tx-item:hover { background:var(--border);transform:translateX(2px); }
+    .tx-item.highlighted { border:1.5px solid var(--upi-purple);
+      background:rgba(124,58,237,.08); }
   </style>
 </head>
 <body>
@@ -503,6 +572,70 @@
   </div>
 </div>
 
+<!-- ══ RECEIPT MODAL ══ -->
+<div class="receipt-overlay" id="receiptOverlay" onclick="closeReceiptIfBg(event)">
+  <div class="receipt-modal" id="receiptModal">
+    <div class="rcpt-close-row">
+      <button class="rcpt-close-btn" onclick="closeReceipt()">✕ Close</button>
+    </div>
+
+    <!-- Status header -->
+    <div class="rcpt-header">
+      <div class="rcpt-status-row">
+        <div class="rcpt-status-icon" id="rcptStatusIcon">✅</div>
+        <div class="rcpt-status-text" id="rcptStatusText">Transaction Successful</div>
+      </div>
+      <div class="rcpt-datetime" id="rcptDatetime"></div>
+    </div>
+
+    <!-- Party row -->
+    <div class="rcpt-party-row">
+      <div class="rcpt-avatar" id="rcptAvatar">?</div>
+      <div class="rcpt-party-info">
+        <div class="rcpt-direction" id="rcptDirection">PAID TO</div>
+        <div class="rcpt-party-name" id="rcptPartyName"></div>
+        <div class="rcpt-party-upi" id="rcptPartyUpi"></div>
+      </div>
+      <div class="rcpt-amount" id="rcptAmount"></div>
+    </div>
+
+    <!-- Transfer details -->
+    <div class="rcpt-section">
+      <div class="rcpt-section-title">Transfer Details</div>
+
+      <div class="rcpt-detail-row">
+        <div class="rcpt-detail-label">Message</div>
+        <div class="rcpt-detail-value" id="rcptMessage">—</div>
+      </div>
+      <div class="rcpt-detail-row">
+        <div class="rcpt-detail-label">Transaction ID</div>
+        <div class="rcpt-detail-value" id="rcptTxnId" style="font-family:monospace;font-size:.82rem;"></div>
+      </div>
+      <div class="rcpt-detail-row">
+        <div class="rcpt-detail-label">UTR Number</div>
+        <div class="rcpt-detail-value rcpt-utr" id="rcptUtr"></div>
+      </div>
+    </div>
+
+    <!-- Account row -->
+    <div class="rcpt-section" style="padding-top:0">
+      <div class="rcpt-acc-row">
+        <div class="rcpt-acc-info">
+          <div class="rcpt-acc-label" id="rcptAccLabel">DEBITED FROM</div>
+          <div class="rcpt-acc-num" id="rcptAccNum"></div>
+        </div>
+        <div class="rcpt-acc-amount" id="rcptAccAmount"></div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="rcpt-actions">
+      <button class="rcpt-btn history" id="rcptHistoryBtn" onclick="viewHistoryWith()">👁 View History</button>
+      <button class="rcpt-btn download" onclick="downloadReceipt()">⬇ Download Receipt</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ PROCESSING SCREEN ══ -->
 <div class="screen" id="processingScreen" style="align-items:center;justify-content:center">
   <div class="processing-inner">
@@ -541,15 +674,19 @@ async function init() {
     if (data && data.hasProfile) {
       profile = data;
       loadDashboard();
-      // Handle deep-link: ?pay=localpart
-      const params = new URLSearchParams(window.location.search);
+      // Handle deep-links
+      const params  = new URLSearchParams(window.location.search);
       const payParam = params.get('pay');
+      const hlTx     = params.get('highlightTx');
       if (payParam) {
         const fullId = payParam.includes('@') ? payParam : (payParam + '@javabank.com');
         showPayPanel();
         switchPayTab('manual');
         document.getElementById('recipientLocalInput').value = payParam.replace('@javabank.com','');
         setTimeout(() => lookupRecipient(fullId), 300);
+      } else if (hlTx) {
+        // Deep-linked to a specific transaction receipt
+        showTxPanel();
       }
     } else {
       await loadSetupAccounts();
@@ -903,37 +1040,197 @@ function downloadQr() {
 }
 
 // ── TRANSACTIONS ─────────────────────────────────────
-async function showTxPanel() {
+let _allTxData = [];  // cache for filtering
+let _historyFilter = null;
+
+async function showTxPanel(filterName) {
   showScreen('txScreen');
+  _historyFilter = filterName || null;
   document.getElementById('txLoading').style.display = 'block';
   document.getElementById('txList').innerHTML = '';
   try {
-    const txList = await API.call('/upi/transactions');
+    const res = await API.call('/upi/transactions');
+    const txList = res && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+    _allTxData = txList;
     document.getElementById('txLoading').style.display = 'none';
-    if (!txList || txList.length === 0) {
-      document.getElementById('txList').innerHTML = `
-        <div class="empty-state"><div class="empty-icon">&#128237;</div><p>No UPI transactions yet</p></div>`;
-      return;
+    renderTxList(txList, filterName);
+
+    // Deep-link highlight
+    const params = new URLSearchParams(window.location.search);
+    const hlId = parseInt(params.get('highlightTx') || '0');
+    if (hlId) {
+      const tx = txList.find(t => t.id === hlId);
+      if (tx) setTimeout(() => openReceipt(tx), 400);
     }
-    document.getElementById('txList').innerHTML = txList.map(tx => {
-      const isOut = tx.type === 'TRANSFER';
-      const sign  = isOut ? '-' : '+';
-      const cls   = isOut ? 'out' : 'in';
-      const icon  = isOut ? '&#128228;' : '&#128229;';
-      const raw   = (tx.description || '').replace('[UPI] ','');
-      const desc  = raw.split('|')[0].trim();
-      return `<div class="tx-item">
-        <div class="tx-icon ${cls}">${icon}</div>
-        <div class="tx-info">
-          <div class="tx-desc" title="${tx.description||''}">${desc}</div>
-          <div class="tx-date">${fmtDate(tx.date)}&nbsp;&middot;&nbsp;ID:&nbsp;${tx.id}</div>
-        </div>
-        <div class="tx-amount ${cls}">${sign}&#8377;${Number(tx.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</div>
-      </div>`;
-    }).join('');
   } catch(e) {
     document.getElementById('txLoading').style.display = 'none';
     document.getElementById('txList').innerHTML = `<div class="alert err show">${e.message}</div>`;
+  }
+}
+
+function renderTxList(txList, filterName) {
+  const filtered = filterName
+    ? txList.filter(tx => {
+        const d = tx.description || '';
+        return d.includes(filterName);
+      })
+    : txList;
+
+  if (!filtered || filtered.length === 0) {
+    document.getElementById('txList').innerHTML = `
+      <div class="empty-state"><div class="empty-icon">📭</div>
+      <p>${filterName ? 'No transactions with ' + filterName : 'No UPI transactions yet'}</p>
+      ${filterName ? '<button class="btn btn-outline" style="margin-top:12px;width:auto;padding:8px 20px" onclick="showTxPanel()">Show All</button>' : ''}
+      </div>`;
+    return;
+  }
+
+  document.getElementById('txList').innerHTML = filtered.map(tx => {
+    const isOut = tx.type === 'TRANSFER';
+    const sign  = isOut ? '-' : '+';
+    const cls   = isOut ? 'out' : 'in';
+    const icon  = isOut ? '📤' : '📥';
+    const raw   = (tx.description || '').replace('[UPI] ','');
+    const firstPart = raw.split('|')[0].trim();
+    // For display: show "To: Name" or "From: Name"
+    const desc = firstPart.replace(/^(To:|From:)\s*/,'$1 ');
+    const dataAttr = encodeURIComponent(JSON.stringify(tx));
+    return `<div class="tx-item" id="tx-${tx.id}" onclick="openReceipt(JSON.parse(decodeURIComponent('${dataAttr}')))"
+      title="Click to view receipt">
+      <div class="tx-icon ${cls}">${icon}</div>
+      <div class="tx-info">
+        <div class="tx-desc" title="${tx.description||''}">${desc}</div>
+        <div class="tx-date">${fmtDate(tx.date)}&nbsp;&middot;&nbsp;${isOut?'Paid':'Received'}</div>
+      </div>
+      <div class="tx-amount ${cls}">${sign}&#8377;${Number(tx.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── RECEIPT ──────────────────────────────────────────
+let _currentReceiptTx = null;
+let _receiptHistoryName = null;
+
+function generateUTR(id) {
+  // Deterministic 12-char UTR: "JB" + tx ID zero-padded to 10 digits
+  return 'JB' + String(id).padStart(10, '0');
+}
+
+function openReceipt(tx) {
+  _currentReceiptTx = tx;
+  const isReceived = tx.type !== 'TRANSFER'; // DEPOSIT = received
+  const desc = tx.description || '';
+
+  // Parse party name and UPI ID
+  // Sent:     "[UPI] To: Name (upiId) | note"
+  // Received: "[UPI] From: Name (upiId) | note"  OR "[UPI] From: acct/xxxxXXXX | note"
+  let partyName = '—', partyUpi = '', note = '', direction = isReceived ? 'RECEIVED FROM' : 'PAID TO';
+  const upiPart = desc.replace('[UPI] ', '');
+  const pipeIdx = upiPart.indexOf('|');
+  const headerPart = pipeIdx >= 0 ? upiPart.substring(0, pipeIdx).trim() : upiPart;
+  note = pipeIdx >= 0 ? upiPart.substring(pipeIdx + 1).trim() : '';
+
+  // Extract name and UPI ID from "To: Name (upiId)" or "From: Name (upiId)"
+  const nameMatch = headerPart.match(/(?:To:|From:)\s*(.+?)\s*(?:\((.+?)\))?$/);
+  if (nameMatch) {
+    partyName = nameMatch[1] ? nameMatch[1].trim() : '—';
+    partyUpi  = nameMatch[2] ? nameMatch[2].trim() : '';
+  }
+  _receiptHistoryName = partyName !== '—' ? partyName : null;
+
+  // Account number (masked last 4 of recipient field)
+  const recipientField = tx.recipient || '';
+  const maskedAcc = recipientField.length > 4
+    ? 'xxxxxx' + recipientField.slice(-4)
+    : recipientField || '—';
+
+  const amount = tx.amount || 0;
+  const amtStr = '₹' + Number(amount).toLocaleString('en-IN', {minimumFractionDigits:2});
+  const utr    = generateUTR(tx.id);
+
+  // Populate receipt modal
+  document.getElementById('rcptStatusIcon').textContent = isReceived ? '✅' : '✅';
+  const statusEl = document.getElementById('rcptStatusText');
+  statusEl.textContent = 'Transaction Successful';
+  statusEl.className = 'rcpt-status-text ' + (isReceived ? 'received' : 'paid');
+
+  // Datetime
+  let dtStr = '—';
+  if (tx.date) {
+    const d = new Date(tx.date);
+    dtStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) +
+            '  ·  ' +
+            d.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  }
+  document.getElementById('rcptDatetime').textContent = dtStr;
+
+  // Avatar
+  document.getElementById('rcptAvatar').textContent = partyName.charAt(0).toUpperCase() || '?';
+  document.getElementById('rcptDirection').textContent = direction;
+  document.getElementById('rcptPartyName').textContent = partyName;
+  document.getElementById('rcptPartyUpi').textContent  = partyUpi;
+
+  const amtEl = document.getElementById('rcptAmount');
+  amtEl.textContent = amtStr;
+  amtEl.className = 'rcpt-amount ' + (isReceived ? 'received' : 'paid');
+
+  document.getElementById('rcptMessage').textContent = note || desc || '—';
+  document.getElementById('rcptTxnId').textContent = 'TXN-' + tx.id;
+  document.getElementById('rcptUtr').textContent = utr;
+
+  document.getElementById('rcptAccLabel').textContent = isReceived ? 'CREDITED TO' : 'DEBITED FROM';
+  document.getElementById('rcptAccNum').textContent = maskedAcc;
+  document.getElementById('rcptAccAmount').textContent = amtStr;
+
+  // View history button text  
+  const hName = partyName !== '—' && partyName ? partyName.split('(')[0].trim() : null;
+  document.getElementById('rcptHistoryBtn').textContent = hName
+    ? '👁 History with ' + hName.split(' ')[0]
+    : '👁 View History';
+
+  document.getElementById('receiptOverlay').classList.add('open');
+
+  // Highlight in list
+  document.querySelectorAll('.tx-item').forEach(el => el.classList.remove('highlighted'));
+  const listEl = document.getElementById('tx-' + tx.id);
+  if (listEl) {
+    listEl.classList.add('highlighted');
+    listEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+function closeReceipt() {
+  document.getElementById('receiptOverlay').classList.remove('open');
+  document.querySelectorAll('.tx-item').forEach(el => el.classList.remove('highlighted'));
+}
+function closeReceiptIfBg(e) {
+  if (e.target === document.getElementById('receiptOverlay')) closeReceipt();
+}
+
+function viewHistoryWith() {
+  closeReceipt();
+  if (_receiptHistoryName) {
+    renderTxList(_allTxData, _receiptHistoryName);
+  }
+}
+
+async function downloadReceipt() {
+  const modal = document.getElementById('receiptModal');
+  if (!modal) return;
+  try {
+    const tx = _currentReceiptTx;
+    const canvas = await html2canvas(modal, {
+      backgroundColor: '#1a1a24',
+      scale: 2,
+      logging: false,
+      useCORS: true
+    });
+    const a = document.createElement('a');
+    a.download = 'JavaBank-UPI-Receipt-TXN' + (tx ? tx.id : Date.now()) + '.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } catch(e) {
+    alert('Could not download receipt: ' + e.message);
   }
 }
 
@@ -1028,8 +1325,21 @@ function showAlert(id, msg, show) {
   el.classList.toggle('show', show === true && !!msg);
 }
 
+
+
 // Boot
 init();
+
+// Handle highlightTx param (open receipt directly)
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('highlightTx')) {
+    // will be handled inside showTxPanel after profile loads
+  }
+});
+
+// Also listen for back button on receipt
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeReceipt(); });
 </script>
 </body>
 </html>
