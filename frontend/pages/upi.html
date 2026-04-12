@@ -66,8 +66,8 @@
     .pin-circle{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);transition:.2s}
     .pin-circle.filled{background:var(--upi-purple);border-color:var(--upi-purple);transform:scale(1.15)}
 
-    .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:260px;margin:0 auto}
-    .numpad-key{background:var(--surface2);border:none;color:var(--text);font-size:1.3rem;font-weight:600;height:56px;border-radius:50%;cursor:pointer;transition:.15s;font-family:inherit;display:flex;align-items:center;justify-content:center}
+    .numpad{display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center;margin:0 auto}
+    .numpad-key{background:var(--surface2);border:none;color:var(--text);font-size:1.3rem;font-weight:600;width:72px;height:72px;border-radius:50%;cursor:pointer;transition:.15s;font-family:inherit;display:flex;align-items:center;justify-content:center}
     .numpad-key:hover{background:var(--surface);transform:scale(1.05)}
     .numpad-key:active{transform:scale(.95)}
     .numpad-key.bksp{font-size:1rem;color:var(--muted)}
@@ -930,10 +930,10 @@ function onRecipientInput() {
   clearTimeout(recipientTimeout);
   const val = document.getElementById('recipientLocalInput').value.trim().toLowerCase();
   document.getElementById('recipientInfo').style.display = 'none';
-  document.getElementById('payFormArea').style.display = 'none';
   pendingRecipient = null;
-  if (!val || val.length < 2) return;
-  recipientTimeout = setTimeout(() => lookupRecipient(val + '@javabank.com'), 700);
+  showAlert('payFormAlert', '', false);
+  if (!val || val.length < 3) return; // require at minimum 3 chars
+  recipientTimeout = setTimeout(() => lookupRecipient(val + '@javabank.com'), 1200);
 }
 
 async function lookupRecipient(fullId, autoOpenSheet = false) {

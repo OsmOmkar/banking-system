@@ -401,11 +401,68 @@ tr:hover td { background: #f9fafb; }
 .amount-debit  { color: var(--danger);  font-weight: 600; }
 
 /* ---- Responsive ---- */
+
+/* Hamburger button — only shown on mobile */
+.hamburger-btn {
+    display: none;
+    position: fixed;
+    top: 14px; left: 14px;
+    z-index: 200;
+    background: var(--dark);
+    border: none;
+    color: white;
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    font-size: 1.35rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+    transition: background .2s;
+}
+.hamburger-btn:hover { background: #374151; }
+
+/* Translucent backdrop that closes sidebar on tap */
+.sidebar-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 110;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+.sidebar-backdrop.visible { display: block; }
+
+/* Sidebar close ✕ button (mobile only) */
+.sidebar-close-btn {
+    display: none;
+    position: absolute;
+    top: 14px; right: 14px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    align-items: center; justify-content: center;
+}
+
 @media (max-width: 768px) {
-    .sidebar { transform: translateX(-100%); }
-    .main-content { margin-left: 0; padding: 16px; }
+    .hamburger-btn { display: flex; }
+    .sidebar-close-btn { display: flex; }
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform .3s cubic-bezier(0.4,0,0.2,1);
+        z-index: 150;
+    }
+    .sidebar.mob-open { transform: translateX(0); }
+    .main-content { margin-left: 0; padding: 16px; padding-top: 62px; }
     .form-row { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
+    .accounts-grid { grid-template-columns: 1fr; }
+    .table-wrap { font-size: .78rem; }
+    th, td { padding: 8px 10px; }
 }
 
 .empty-state {

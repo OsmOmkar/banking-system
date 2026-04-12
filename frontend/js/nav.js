@@ -1,10 +1,11 @@
 function renderSidebar(activePage) {
     const user = Auth.getUser();
     document.getElementById("sidebarMount").innerHTML = `
-    <aside class="sidebar">
-      <div class="sidebar-brand">
+    <aside class="sidebar" id="mainSidebar">
+      <div class="sidebar-brand" style="position:relative">
         <h2>🏦 JavaBank</h2>
         <span>Banking System</span>
+        <button class="sidebar-close-btn" onclick="closeMobileSidebar()" title="Close">&#x2715;</button>
       </div>
       <nav class="sidebar-nav">
         <a class="nav-item ${activePage==='dashboard'?'active':''}" href="dashboard.html">
@@ -42,7 +43,19 @@ function renderSidebar(activePage) {
           Logout
         </button>
       </div>
-    </aside>`;
+    </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>`;
+
+    // Inject hamburger button once (only visible on mobile via CSS)
+    if (!document.getElementById('jbHamburger')) {
+        const ham = document.createElement('button');
+        ham.id = 'jbHamburger';
+        ham.className = 'hamburger-btn';
+        ham.innerHTML = '&#9776;';
+        ham.setAttribute('aria-label', 'Open navigation menu');
+        ham.onclick = openMobileSidebar;
+        document.body.appendChild(ham);
+    }
 
     // Inject iPhone-style notification container (only once)
     if (!document.getElementById('jb-notif-container')) {
@@ -54,6 +67,20 @@ function renderSidebar(activePage) {
 
     // Start polling for incoming payments
     startPaymentNotificationPolling();
+}
+
+function openMobileSidebar() {
+    const sidebar  = document.getElementById('mainSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar)  sidebar.classList.add('mob-open');
+    if (backdrop) backdrop.classList.add('visible');
+}
+
+function closeMobileSidebar() {
+    const sidebar  = document.getElementById('mainSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar)  sidebar.classList.remove('mob-open');
+    if (backdrop) backdrop.classList.remove('visible');
 }
 
 async function logout() {
@@ -224,48 +251,45 @@ function startPaymentNotificationPolling() {
     if (!Auth.getToken()) return;
     if (_pollInterval) return; // already running
 
-    // Initial check after 5s (let page settle first)
-    setTimeout(pollForNewPayments, 5000);
-    // Then every 15s
-    _pollInterval = setInterval(pollForNewPayments, 15000);
+    // Initial check after 8s (let page settle first)
+    setTimeout(pollForNewPayments, 8000);
+    // Then every 30s — reduced from 15s to ease DB connection pressure
+    _pollInterval = setInterval(pollForNewPayments, 30000);
 }
 
 async function pollForNewPayments() {
     if (!Auth.getToken()) return;
     try {
-        // API.call already unwraps data.data -> returns the array directly
         const txs = await API.call('/upi/transactions');
         if (!txs || !Array.isArray(txs)) return;
 
-        // Filter: only DEPOSIT type (received)
+        // Only look at received payments (DEPOSIT type)
         const received = txs.filter(t => t.type === 'DEPOSIT');
+
         if (received.length === 0) {
-            // Update last-seen even if no deposits (to track total list)
+            // Track max ID so future polls can detect new deposits
             if (txs.length > 0) {
                 const maxId = Math.max(...txs.map(t => t.id));
-                const stored = parseInt(localStorage.getItem('jb_lastUpiReceiveId') || '0');
-                if (stored === 0) localStorage.setItem('jb_lastUpiReceiveId', String(maxId));
+                if (!localStorage.getItem('jb_lastUpiReceiveId'))
+                    localStorage.setItem('jb_lastUpiReceiveId', String(maxId));
             }
             return;
         }
 
         const lastSeenId = parseInt(localStorage.getItem('jb_lastUpiReceiveId') || '0');
-        const newOnes = received.filter(t => t.id > lastSeenId);
+        const newOnes    = received.filter(t => t.id > lastSeenId);
 
-        // Update stored ID
+        // Always update the high-water mark
         const maxId = Math.max(...received.map(t => t.id));
         localStorage.setItem('jb_lastUpiReceiveId', String(maxId));
 
-        // Only show notification if we already had a stored ID (not first page load)
+        // Show notification only after first baseline poll
         if (lastSeenId > 0 && newOnes.length > 0) {
             newOnes.slice(0, 2).forEach(tx => showPaymentNotification(tx));
         }
 
-        // Also poll regular non-UPI account credits
-        await pollNonUpiCredits();
-
     } catch (e) {
-        // Silently ignore — user might not have UPI set up
+        // Silent — user may not have UPI enabled
     }
 }
 
