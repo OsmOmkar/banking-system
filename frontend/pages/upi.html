@@ -9,6 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="/js/nav.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -226,6 +227,30 @@
     .tx-item:hover { background:var(--border);transform:translateX(2px); }
     .tx-item.highlighted { border:1.5px solid var(--upi-purple);
       background:rgba(124,58,237,.08); }
+    /* ─── Pay Confirm Sheet ─────────────────────────── */
+    .pay-confirm-overlay { position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:190;
+      display:none;align-items:flex-end;justify-content:center; }
+    .pay-confirm-overlay.open { display:flex; }
+    .pay-confirm-sheet { background:var(--surface);border-radius:24px 24px 0 0;
+      width:100%;max-width:480px;padding:20px 24px 36px;
+      animation:slideUp .3s cubic-bezier(0.34,1.2,0.64,1); }
+    .pcs-handle { width:40px;height:4px;background:var(--border);border-radius:2px;
+      margin:0 auto 20px; }
+    .pcs-recipient { display:flex;align-items:center;gap:12px;margin-bottom:20px;
+      background:var(--surface2);border-radius:14px;padding:14px; }
+    .pcs-avatar { width:44px;height:44px;border-radius:50%;background:var(--grad);
+      display:flex;align-items:center;justify-content:center;font-size:1.2rem;
+      font-weight:700;color:#fff;flex-shrink:0; }
+    .pcs-name { font-size:1rem;font-weight:700; }
+    .pcs-upi  { font-size:.78rem;color:var(--muted);margin-top:2px; }
+    .pcs-amount-row { display:flex;align-items:center;background:var(--surface2);
+      border-radius:12px;padding:4px 14px;margin-bottom:12px; }
+    .pcs-rupee { font-size:1.4rem;font-weight:800;padding-right:6px;color:var(--muted); }
+    .pcs-amount-row input { background:transparent;border:none;outline:none;flex:1;
+      font-size:1.5rem;font-weight:800;color:var(--text);font-family:inherit;padding:10px 0; }
+    .pcs-amount-row input::placeholder { color:var(--border); }
+    .recipient-found { cursor:pointer;transition:.15s; }
+    .recipient-found:hover { background:rgba(124,58,237,.08); }
   </style>
 </head>
 <body>
@@ -384,38 +409,47 @@
           <div class="upi-suffix">@javabank.com</div>
         </div>
       </div>
-      <div id="recipientInfo" style="display:none" class="recipient-found">
+      <div id="recipientInfo" style="display:none" class="recipient-found"
+        onclick="openPayConfirmSheet()" title="Click to pay this person">
         <div class="recipient-avatar" id="recipientInitial">?</div>
-        <div>
+        <div style="flex:1">
           <div class="recipient-name" id="recipientNameLabel"></div>
           <div class="recipient-upi" id="recipientUpiLabel"></div>
         </div>
+        <div style="color:var(--upi-purple);font-weight:700;font-size:.9rem">Pay →</div>
       </div>
     </div>
 
-    <!-- Pay form (shown after recipient found) -->
-    <div id="payFormArea" style="display:none">
-      <div id="payRecipientCard" class="recipient-found" style="display:none">
-        <div class="recipient-avatar" id="payRecipientInitial">?</div>
-        <div>
-          <div class="recipient-name" id="payRecipientName"></div>
-          <div class="recipient-upi" id="payRecipientUpi"></div>
-        </div>
+    <!-- Hidden legacy pay form inputs (read by submitUpiPay) -->
+    <input type="hidden" id="payAmount">
+    <input type="hidden" id="payDesc">
+    <div id="payFormAlert" class="alert err"></div>
+  </div>
+</div>
+
+<!-- ══ PAY CONFIRM SHEET ══ -->
+<div class="pay-confirm-overlay" id="payConfirmOverlay" onclick="closePCSIfBg(event)">
+  <div class="pay-confirm-sheet">
+    <div class="pcs-handle"></div>
+    <div class="pcs-recipient">
+      <div class="pcs-avatar" id="pcsAvatar">?</div>
+      <div>
+        <div class="pcs-name" id="pcsName"></div>
+        <div class="pcs-upi" id="pcsUpi"></div>
       </div>
-      <div class="form-group">
-        <label>Amount</label>
-        <div class="upi-id-row">
-          <div style="padding:0 14px;font-size:1.2rem;font-weight:700">&#8377;</div>
-          <input type="number" id="payAmount" placeholder="0" min="1" style="border:none;background:transparent;font-size:1.3rem;font-weight:700">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Description (optional)</label>
-        <input type="text" id="payDesc" placeholder="What's this for?">
-      </div>
-      <div id="payFormAlert" class="alert err"></div>
-      <button class="btn btn-primary" onclick="proceedToPay()">Proceed to Pay</button>
     </div>
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;display:block">Amount</label>
+    <div class="pcs-amount-row">
+      <span class="pcs-rupee">&#8377;</span>
+      <input type="number" id="pcsAmount" placeholder="0" min="1" inputmode="decimal" autofocus>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Note (optional)</label>
+      <input type="text" id="pcsDesc" placeholder="What's this for?">
+    </div>
+    <div id="pcsAlert" class="alert err"></div>
+    <button class="btn btn-primary" onclick="proceedFromSheet()" style="font-size:1rem;padding:14px">Proceed to Pay</button>
+    <button class="btn btn-outline" onclick="closePayConfirmSheet()" style="margin-top:8px">Cancel</button>
   </div>
 </div>
 
@@ -674,6 +708,14 @@ async function init() {
     if (data && data.hasProfile) {
       profile = data;
       loadDashboard();
+      // Start notification polling (UPI page has no sidebar, so we call directly)
+      if (typeof injectNotificationStyles === 'function') injectNotificationStyles();
+      if (!document.getElementById('jb-notif-container')) {
+        const nc = document.createElement('div');
+        nc.id = 'jb-notif-container';
+        document.body.appendChild(nc);
+      }
+      if (typeof startPaymentNotificationPolling === 'function') startPaymentNotificationPolling();
       // Handle deep-links
       const params  = new URLSearchParams(window.location.search);
       const payParam = params.get('pay');
@@ -685,7 +727,6 @@ async function init() {
         document.getElementById('recipientLocalInput').value = payParam.replace('@javabank.com','');
         setTimeout(() => lookupRecipient(fullId), 300);
       } else if (hlTx) {
-        // Deep-linked to a specific transaction receipt
         showTxPanel();
       }
     } else {
@@ -797,15 +838,15 @@ function loadDashboard() {
 // ── PAY PANEL ────────────────────────────────────────
 function showPayPanel() {
   pendingRecipient = null;
-  document.getElementById('payFormArea').style.display = 'none';
-  document.getElementById('payRecipientCard').style.display = 'none';
-  document.getElementById('recipientInfo').style.display = 'none';
+  document.getElementById('recipientInfo').style.display     = 'none';
+  document.getElementById('payConfirmOverlay').classList.remove('open');
   document.getElementById('recipientLocalInput').value = '';
-  document.getElementById('payAmount').value = '';
-  document.getElementById('payDesc').value = '';
+  document.getElementById('pcsAmount').value = '';
+  document.getElementById('pcsDesc').value   = '';
+  showAlert('pcsAlert',     '', false);
   showAlert('payFormAlert', '', false);
   showScreen('payScreen');
-  if (currentPayTab === 'scanner') startCamera();
+  switchPayTab('scanner');
 }
 
 function switchPayTab(tab) {
@@ -868,10 +909,20 @@ async function handleScannedQR(raw) {
       if (pa) upiLocalPart = pa.replace('@javabank.com','');
     }
   }
-  if (!upiLocalPart) { showAlert('payFormAlert', 'Not a valid JavaBank UPI QR code.', true); return; }
+  if (!upiLocalPart) {
+    showAlert('payFormAlert', 'Not a valid JavaBank UPI QR code.', true);
+    startCamera(); // restart camera
+    return;
+  }
+  // ❌ Block self-pay via QR
+  if (profile && (upiLocalPart + '@javabank.com') === profile.upiId) {
+    showAlert('payFormAlert', 'You cannot pay yourself. Please scan someone else’s QR code.', true);
+    startCamera();
+    return;
+  }
   switchPayTab('manual');
   document.getElementById('recipientLocalInput').value = upiLocalPart;
-  await lookupRecipient(upiLocalPart + '@javabank.com');
+  await lookupRecipient(upiLocalPart + '@javabank.com', true /* autoOpenSheet */);
 }
 
 let recipientTimeout;
@@ -885,34 +936,78 @@ function onRecipientInput() {
   recipientTimeout = setTimeout(() => lookupRecipient(val + '@javabank.com'), 700);
 }
 
-async function lookupRecipient(fullId) {
+async function lookupRecipient(fullId, autoOpenSheet = false) {
   try {
     const res = await API.call(`/upi/lookup?upiId=${encodeURIComponent(fullId)}`);
+
+    // ❌ Block self-pay via manual entry
+    if (profile && res.upiId === profile.upiId) {
+      document.getElementById('recipientInfo').style.display = 'none';
+      showAlert('payFormAlert', 'You cannot pay yourself! Please enter someone else’s UPI ID.', true);
+      return;
+    }
+
     pendingRecipient = res;
     const name = res.name || 'JavaBank User';
     const initial = name.charAt(0).toUpperCase();
 
+    // Show single recipient info card (no inline form anymore)
     document.getElementById('recipientInitial').textContent = initial;
     document.getElementById('recipientNameLabel').textContent = name;
     document.getElementById('recipientUpiLabel').textContent = res.upiId;
     document.getElementById('recipientInfo').style.display = 'flex';
 
-    document.getElementById('payRecipientInitial').textContent = initial;
-    document.getElementById('payRecipientName').textContent = name;
-    document.getElementById('payRecipientUpi').textContent = res.upiId;
-    document.getElementById('payRecipientCard').style.display = 'flex';
-    document.getElementById('payFormArea').style.display = 'block';
+    showAlert('payFormAlert', '', false);
+
+    // Auto-open pay sheet when found via QR scan
+    if (autoOpenSheet) openPayConfirmSheet();
+
   } catch(e) {
     document.getElementById('recipientInfo').style.display = 'none';
-    document.getElementById('payFormArea').style.display = 'none';
-    if (e.message && e.message.includes('not found')) showAlert('payFormAlert', 'UPI ID not found: ' + fullId, true);
+    if (e.message && e.message.includes('not found'))
+      showAlert('payFormAlert', 'UPI ID not found: ' + fullId, true);
   }
 }
 
+// ── PAY CONFIRM SHEET ─────────────────────────────────
+function openPayConfirmSheet() {
+  if (!pendingRecipient) return;
+  const name    = pendingRecipient.name || 'JavaBank User';
+  const initial = name.charAt(0).toUpperCase();
+  document.getElementById('pcsAvatar').textContent = initial;
+  document.getElementById('pcsName').textContent   = name;
+  document.getElementById('pcsUpi').textContent    = pendingRecipient.upiId;
+  document.getElementById('pcsAmount').value = '';
+  document.getElementById('pcsDesc').value   = '';
+  showAlert('pcsAlert', '', false);
+  document.getElementById('payConfirmOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('pcsAmount').focus(), 350);
+}
+
+function closePayConfirmSheet() {
+  document.getElementById('payConfirmOverlay').classList.remove('open');
+}
+function closePCSIfBg(e) {
+  if (e.target === document.getElementById('payConfirmOverlay')) closePayConfirmSheet();
+}
+
+function proceedFromSheet() {
+  if (!pendingRecipient) { closePayConfirmSheet(); return; }
+  const amount = parseFloat(document.getElementById('pcsAmount').value);
+  if (!amount || amount <= 0) { showAlert('pcsAlert', 'Please enter a valid amount.', true); return; }
+  const desc  = document.getElementById('pcsDesc').value.trim();
+  // Sync to hidden legacy inputs so submitUpiPay can read them
+  document.getElementById('payAmount').value = amount;
+  document.getElementById('payDesc').value   = desc;
+  closePayConfirmSheet();
+  // Show account confirmation bottom sheet
+  proceedToPay();
+}
+
 function proceedToPay() {
-  if (!pendingRecipient) { showAlert('payFormAlert', 'Please select a recipient first.', true); return; }
+  if (!pendingRecipient) return;
   const amount = parseFloat(document.getElementById('payAmount').value);
-  if (!amount || amount <= 0) { showAlert('payFormAlert', 'Please enter a valid amount.', true); return; }
+  if (!amount || amount <= 0) return;
 
   document.getElementById('bsAmount').textContent = fmt(amount);
   document.getElementById('bsBankOptions').innerHTML = `
@@ -1217,20 +1312,47 @@ function viewHistoryWith() {
 async function downloadReceipt() {
   const modal = document.getElementById('receiptModal');
   if (!modal) return;
+  const btn = event.currentTarget || event.target;
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '⏳ Generating...'; btn.disabled = true; }
   try {
     const tx = _currentReceiptTx;
+    // ① Temporarily hide the Close button from the screenshot
+    const closeRow = modal.querySelector('.rcpt-close-row');
+    const actionsRow = modal.querySelector('.rcpt-actions');
+    if (closeRow)   closeRow.style.visibility = 'hidden';
+    if (actionsRow) actionsRow.style.visibility = 'hidden';
+    // ② Remove scroll constraints so html2canvas captures the full modal
+    const origMaxH   = modal.style.maxHeight;
+    const origOverflow = modal.style.overflowY;
+    modal.style.maxHeight  = 'none';
+    modal.style.overflowY  = 'visible';
+
     const canvas = await html2canvas(modal, {
       backgroundColor: '#1a1a24',
       scale: 2,
       logging: false,
-      useCORS: true
+      useCORS: true,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: modal.scrollWidth,
+      windowHeight: modal.scrollHeight
     });
+
+    // Restore styles
+    modal.style.maxHeight  = origMaxH;
+    modal.style.overflowY  = origOverflow;
+    if (closeRow)   closeRow.style.visibility = '';
+    if (actionsRow) actionsRow.style.visibility = '';
+
     const a = document.createElement('a');
     a.download = 'JavaBank-UPI-Receipt-TXN' + (tx ? tx.id : Date.now()) + '.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
   } catch(e) {
     alert('Could not download receipt: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
   }
 }
 
