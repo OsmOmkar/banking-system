@@ -32,6 +32,7 @@ public class TransactionDAO {
             if (rs.next()) {
                 tx.setId(rs.getInt("id"));
                 tx.setCreatedAt(rs.getTimestamp("created_at"));
+                com.banking.util.DatabaseSyncService.syncTransactionInsert(tx.getId(), tx.getAccountId(), tx.getTransactionType().name(), tx.getAmount(), tx.getBalanceAfter(), tx.getDescription(), tx.getRecipientAccount());
             }
 
         } catch (SQLException e) {
@@ -45,7 +46,8 @@ public class TransactionDAO {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, transactionId);
-            ps.executeUpdate();
+            int rows = ps.executeUpdate();
+            if (rows > 0) com.banking.util.DatabaseSyncService.syncCustom("UPDATE transactions SET is_flagged = TRUE WHERE id = ?", transactionId);
         } catch (SQLException e) {
             System.err.println("[TransactionDAO] Flag error: " + e.getMessage());
         }

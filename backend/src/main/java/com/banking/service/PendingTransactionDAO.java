@@ -51,7 +51,16 @@ public class PendingTransactionDAO {
             ps.setDouble(18, pt.getRecipientOriginalBalance());
 
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return mapRow(rs);
+            if (rs.next()) {
+                PendingTransaction saved = mapRow(rs);
+                if (saved != null) {
+                    com.banking.util.DatabaseSyncService.syncCustom(
+                        "INSERT INTO pending_transactions (id, account_id, account_number, transaction_type, amount, to_account_number, description, ip_address, status, expires_at, fraud_alert_type, fraud_description, severity, user_id, user_email, user_phone, user_name, original_balance, recipient_original_balance) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING",
+                        saved.getId(), saved.getAccountId(), saved.getAccountNumber(), saved.getTransactionType(), saved.getAmount(), saved.getToAccountNumber(), saved.getDescription(), saved.getIpAddress(), saved.getStatus().name(), saved.getExpiresAt(), saved.getFraudAlertType(), saved.getFraudDescription(), saved.getSeverity(), saved.getUserId(), saved.getUserEmail(), saved.getUserPhone(), saved.getUserName(), saved.getOriginalBalance(), saved.getRecipientOriginalBalance()
+                    );
+                }
+                return saved;
+            }
 
         } catch (SQLException e) {
             System.err.println("[PendingTransactionDAO] Save error: " + e.getMessage());
@@ -128,7 +137,9 @@ public class PendingTransactionDAO {
 
             ps.setString(1, status.name());
             ps.setInt(2, id);
-            return ps.executeUpdate() > 0;
+            boolean success = ps.executeUpdate() > 0;
+            if (success) com.banking.util.DatabaseSyncService.syncCustom("UPDATE pending_transactions SET status = ?, responded_at = NOW() WHERE id = ?", status.name(), id);
+            return success;
 
         } catch (SQLException e) {
             System.err.println("[PendingTransactionDAO] UpdateStatus error: " + e.getMessage());

@@ -21,6 +21,7 @@ public class BankingServer {
         }
 
         BankingService bankingService = new BankingService();
+        com.banking.util.DatabaseSyncService.start();
 
         // Health check endpoints
         server.createContext("/api/health", (HttpExchange exchange) -> {
@@ -143,6 +144,7 @@ public class BankingServer {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[BankingServer] Shutting down...");
             bankingService.shutdown();
+            com.banking.util.DatabaseSyncService.stop();
             server.stop(0);
         }));
     }

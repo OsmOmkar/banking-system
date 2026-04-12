@@ -16,10 +16,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class DatabaseSyncService implements Runnable {
 
     // Local PostgreSQL connection details
-    // CONFIGURE THESE for your local database
-    private static final String LOCAL_DB_URL      = "jdbc:postgresql://localhost:5432/banking_local";
-    private static final String LOCAL_DB_USER     = "postgres";
-    private static final String LOCAL_DB_PASSWORD = "your_password_here";
+    // CONFIGURE THESE for your local database via ENV vars or defaults
+    private static final String LOCAL_DB_URL      = System.getenv("LOCAL_DB_URL") != null ? System.getenv("LOCAL_DB_URL") : "jdbc:postgresql://localhost:5432/banking_local";
+    private static final String LOCAL_DB_USER     = System.getenv("LOCAL_DB_USER") != null ? System.getenv("LOCAL_DB_USER") : "postgres";
+    private static final String LOCAL_DB_PASSWORD = System.getenv("LOCAL_DB_PASSWORD") != null ? System.getenv("LOCAL_DB_PASSWORD") : "A12345678a";
 
     // SYLLABUS: Unit IV - BlockingQueue for thread-safe sync queue
     private static final BlockingQueue<SyncOperation> syncQueue = new LinkedBlockingQueue<>();
@@ -40,6 +40,14 @@ public class DatabaseSyncService implements Runnable {
             this.sql    = sql;
             this.params = params;
         }
+    }
+
+    /**
+     * Queues a custom SQL sync execution.
+     */
+    public static void syncCustom(String sql, Object... params) {
+        if (!running) return;
+        syncQueue.offer(new SyncOperation(sql, params));
     }
 
     /**

@@ -104,7 +104,11 @@ public class UserDAO {
             ps.setString(5, PasswordUtil.hash(password));
 
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return mapRow(rs);
+            if (rs.next()) {
+                User user = mapRow(rs);
+                com.banking.util.DatabaseSyncService.syncUserInsert(user.getId(), user.getUsername(), user.getEmail(), user.getFullName(), user.getPhone(), user.getPasswordHash());
+                return user;
+            }
 
         } catch (SQLException e) {
             System.err.println("[UserDAO] Register error: " + e.getMessage());
@@ -140,6 +144,7 @@ public class UserDAO {
             ps.setString(1, email);
             int rows = ps.executeUpdate();
             if (rows > 0) {
+                com.banking.util.DatabaseSyncService.syncEmailVerified(email);
                 System.out.println("[UserDAO] Email verified for: " + email);
                 return true;
             }
@@ -158,6 +163,7 @@ public class UserDAO {
             ps.setString(1, cleanPhone);
             int rows = ps.executeUpdate();
             if (rows > 0) {
+                com.banking.util.DatabaseSyncService.syncPhoneVerified(cleanPhone);
                 System.out.println("[UserDAO] Phone verified for: " + phone);
                 return true;
             }
@@ -250,7 +256,9 @@ public class UserDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newUsername);
             ps.setInt(2, userId);
-            return ps.executeUpdate() > 0;
+            boolean success = ps.executeUpdate() > 0;
+            if (success) com.banking.util.DatabaseSyncService.syncCustom("UPDATE users SET username = ? WHERE id = ? AND is_active = TRUE", newUsername, userId);
+            return success;
         } catch (SQLException e) {
             System.err.println("[UserDAO] updateUsername error: " + e.getMessage());
         }
@@ -264,7 +272,9 @@ public class UserDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newEmail);
             ps.setInt(2, userId);
-            return ps.executeUpdate() > 0;
+            boolean success = ps.executeUpdate() > 0;
+            if (success) com.banking.util.DatabaseSyncService.syncCustom("UPDATE users SET email = ?, email_verified = TRUE WHERE id = ? AND is_active = TRUE", newEmail, userId);
+            return success;
         } catch (SQLException e) {
             System.err.println("[UserDAO] updateEmail error: " + e.getMessage());
         }
@@ -278,7 +288,9 @@ public class UserDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newPhone);
             ps.setInt(2, userId);
-            return ps.executeUpdate() > 0;
+            boolean success = ps.executeUpdate() > 0;
+            if (success) com.banking.util.DatabaseSyncService.syncCustom("UPDATE users SET phone = ?, phone_verified = TRUE WHERE id = ? AND is_active = TRUE", newPhone, userId);
+            return success;
         } catch (SQLException e) {
             System.err.println("[UserDAO] updatePhone error: " + e.getMessage());
         }
@@ -293,6 +305,7 @@ public class UserDAO {
             ps.setInt(2, userId);
             int rows = ps.executeUpdate();
             if (rows > 0) {
+                com.banking.util.DatabaseSyncService.syncCustom("UPDATE users SET password_hash = ? WHERE id = ? AND is_active = TRUE", PasswordUtil.hash(newPassword), userId);
                 System.out.println("[UserDAO] Password updated for userId=" + userId);
                 return true;
             }
@@ -318,6 +331,10 @@ public class UserDAO {
                 ps2.setInt(1, userId);
                 int rows = ps2.executeUpdate();
                 conn.commit();
+                if (rows > 0) {
+                    com.banking.util.DatabaseSyncService.syncCustom("DELETE FROM sessions WHERE user_id = ?", userId);
+                    com.banking.util.DatabaseSyncService.syncCustom("UPDATE users SET is_active = FALSE WHERE id = ?", userId);
+                }
                 System.out.println("[UserDAO] Deactivated user id=" + userId);
                 return rows > 0;
             } catch (SQLException e) {

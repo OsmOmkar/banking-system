@@ -81,6 +81,7 @@ public class UpiDAO {
             if (rs.next()) {
                 profile.setId(rs.getInt("id"));
                 profile.setCreatedAt(rs.getTimestamp("created_at"));
+                com.banking.util.DatabaseSyncService.syncCustom("INSERT INTO upi_profiles (id, user_id, account_id, upi_id, pin_hash) VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING", profile.getId(), profile.getUserId(), profile.getAccountId(), profile.getUpiId(), profile.getPinHash());
             }
         } catch (SQLException e) {
             System.err.println("[UpiDAO] save error: " + e.getMessage());
@@ -96,7 +97,8 @@ public class UpiDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newPinHash);
             ps.setInt(2, userId);
-            ps.executeUpdate();
+            int rows = ps.executeUpdate();
+            if (rows > 0) com.banking.util.DatabaseSyncService.syncCustom("UPDATE upi_profiles SET pin_hash = ?, updated_at = NOW() WHERE user_id = ?", newPinHash, userId);
         } catch (SQLException e) {
             System.err.println("[UpiDAO] updatePin error: " + e.getMessage());
         }

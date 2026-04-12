@@ -85,7 +85,9 @@ public class AccountDAO {
 
             ps.setDouble(1, newBalance);
             ps.setInt(2, accountId);
-            return ps.executeUpdate() > 0;
+            boolean success = ps.executeUpdate() > 0;
+            if (success) com.banking.util.DatabaseSyncService.syncAccountBalanceUpdate(accountId, newBalance);
+            return success;
 
         } catch (SQLException e) {
             System.err.println("[AccountDAO] Balance update error: " + e.getMessage());
@@ -110,7 +112,11 @@ public class AccountDAO {
             ps.setDouble(6, overdraftLimit);
 
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return mapRow(rs);
+            if (rs.next()) {
+                Account account = mapRow(rs);
+                com.banking.util.DatabaseSyncService.syncAccountInsert(account.getId(), account.getUserId(), account.getAccountNumber(), account.getAccountType(), account.getBalance());
+                return account;
+            }
 
         } catch (SQLException e) {
             System.err.println("[AccountDAO] Create error: " + e.getMessage());
