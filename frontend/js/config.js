@@ -8,7 +8,7 @@ const CONFIG = {
     // Otherwise use the deployed Railway backend
     API_BASE: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? 'http://localhost:8081/api'
-        : 'https://banking-system-production-7af6.up.railway.app/api'
+        : '/api'
 };
 
 const Auth = {

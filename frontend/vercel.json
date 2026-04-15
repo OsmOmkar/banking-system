@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    {"source": "/api/:path*", "destination": "https://banking-system-production-7af6.up.railway.app/api/:path*"},
     {"source": "/js/(.*)", "destination": "/js/$1"},
     {"source": "/css/(.*)", "destination": "/css/$1"},
     {"source": "/pages/(.*)", "destination": "/pages/$1"},
